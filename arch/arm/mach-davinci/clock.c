@@ -594,7 +594,7 @@ int __init davinci_clk_init(struct clk_lookup *clocks)
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
-#define CLKNAME_MAX	10		/* longest clock name */
+#define CLKNAME_MAX	25		/* longest clock name */
 #define NEST_DELTA	2
 #define NEST_MAX	4
 
