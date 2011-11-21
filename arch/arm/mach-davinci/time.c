@@ -139,7 +139,12 @@ static int timer32_config(struct timer_s *t)
 		tcr = __raw_readl(t->base + TCR);
 
 		/* disable timer */
+		#warning "****cleanup required ************"
+#ifdef CONFIG_MACH_TCI6614_SIM
+		tcr = 0;
+#else
 		tcr &= ~(TCR_ENAMODE_MASK << t->enamode_shift);
+#endif
 		__raw_writel(tcr, t->base + TCR);
 
 		/* reset counter to zero, set new period */
