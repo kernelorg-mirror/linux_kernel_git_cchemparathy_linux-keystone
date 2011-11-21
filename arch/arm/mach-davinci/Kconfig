@@ -246,6 +246,12 @@ config MACH_OMAPL138_HAWKBOARD
 	  Information of this board may be found at
 	  http://www.hawkboard.org/
 
+config MACH_TCI6614_SIM
+	bool "TI TCI6614 Simulator Platform"
+	depends on ARCH_DAVINCI_TCI6614
+	help
+	  Say Y here to select the TI TCI6614 Simulator Platform.
+
 config DAVINCI_MUX
 	bool "DAVINCI multiplexing support"
 	depends on ARCH_DAVINCI
