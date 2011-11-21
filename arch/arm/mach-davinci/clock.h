@@ -47,6 +47,13 @@
 #define PLLDIV7         0x16c
 #define PLLDIV8         0x170
 #define PLLDIV9         0x174
+#define PLLDIV10        0x178
+#define PLLDIV11        0x17c
+#define PLLDIV12        0x180
+#define PLLDIV13        0x184
+#define PLLDIV14        0x188
+#define PLLDIV15        0x18c
+#define PLLDIV16        0x190
 #define PLLDIV_EN       BIT(15)
 #define PLLDIV_RATIO_MASK 0x1f
 
