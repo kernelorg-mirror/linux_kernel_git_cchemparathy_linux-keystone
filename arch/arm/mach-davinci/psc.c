@@ -88,9 +88,15 @@ void davinci_psc_config(unsigned int domain, unsigned int ctlr,
 		ptcmd = 1 << domain;
 		__raw_writel(ptcmd, psc_base + PTCMD);
 
-		do {
-			epcpr = __raw_readl(psc_base + EPCPR);
-		} while ((((epcpr >> domain) & 1) == 0));
+		if (cpu_is_davinci_dm644x()) {
+			do {
+				epcpr = __raw_readl(psc_base + EPCPR);
+			} while ((((epcpr >> domain) & 1) == 0));
+		}
+
+		pdctl = __raw_readl(psc_base + PDCTL + 4 * domain);
+		pdctl |= 0x100;
+		__raw_writel(pdctl, psc_base + PDCTL + 4 * domain);
 
 		pdctl = __raw_readl(psc_base + PDCTL + 4 * domain);
 		pdctl |= PDCTL_EPCGOOD;
