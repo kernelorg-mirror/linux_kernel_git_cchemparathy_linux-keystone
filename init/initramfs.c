@@ -467,8 +467,10 @@ static char * __init unpack_to_rootfs(char *buf, unsigned len)
 					 compress_name);
 				message = msg_buf;
 			}
-		} else
-			error("junk in compressed archive");
+		} else {
+			/* assume the image is uncompressed */
+			flush_buffer(buf, len);
+		}
 		if (state != Reset)
 			error("junk in compressed archive");
 		this_header = saved_offset + my_inptr;
