@@ -46,6 +46,7 @@ struct tci6614_device_info {
 	struct davinci_spi_platform_data *spi_config;
 };
 
+extern void __init omap_aintc_init(void);
 extern struct platform_device tci6614_wdt_device;
 extern struct platform_device tci6614_serial_device;
 
