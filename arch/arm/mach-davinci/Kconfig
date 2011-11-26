@@ -10,6 +10,9 @@ config CP_INTC
 config CP_INTD
 	bool
 
+config OMAP_AINTC
+	bool "OMAP AINTC support"
+
 config ARCH_DAVINCI_DMx
 	select CPU_ARM926T
 	bool

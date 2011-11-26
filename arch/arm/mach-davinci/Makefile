@@ -21,6 +21,7 @@ obj-$(CONFIG_ARCH_DAVINCI_TNETV107X)    += tnetv107x.o devices-tnetv107x.o
 obj-$(CONFIG_AINTC)			+= irq.o
 obj-$(CONFIG_CP_INTC)			+= cp_intc.o
 obj-$(CONFIG_CP_INTD)			+= cp_intd.o
+obj-$(CONFIG_OMAP_AINTC)		+= omap_aintc.o
 
 # Board specific
 obj-$(CONFIG_MACH_DAVINCI_EVM)  	+= board-dm644x-evm.o
