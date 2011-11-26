@@ -65,6 +65,10 @@ struct davinci_soc_info {
 	u8				*intc_irq_prios;
 	unsigned long			intc_irq_num;
 	u32				*intc_host_map;
+	u32				intd_base;
+	u32				intd_irq_base;
+	unsigned long			intd_irq_num;
+	u32				*intc_to_intd_map;
 	struct davinci_timer_info	*timer_info;
 	int				gpio_type;
 	u32				gpio_base;
