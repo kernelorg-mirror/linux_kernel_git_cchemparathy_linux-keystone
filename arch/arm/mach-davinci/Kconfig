@@ -17,6 +17,9 @@ config ARCH_DAVINCI_DMx
 	select CPU_ARM926T
 	bool
 
+config TI_KEYSTONE
+	bool
+
 menu "TI DaVinci Implementations"
 
 comment "DaVinci Core Type"
@@ -61,6 +64,14 @@ config ARCH_DAVINCI_TNETV107X
 	select CPU_V6
 	select CP_INTC
 	bool "TNETV107X based system"
+
+config ARCH_DAVINCI_TCI6614
+	select CPU_V7
+	select ARM_L1_CACHE_SHIFT_6
+	select OMAP_AINTC
+	select CP_INTD
+	select TI_KEYSTONE
+	bool "TCI6614 based system"
 
 comment "DaVinci Board Type"
 
