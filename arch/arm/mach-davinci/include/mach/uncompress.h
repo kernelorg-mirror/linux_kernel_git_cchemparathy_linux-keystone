@@ -97,6 +97,7 @@ static inline void __arch_decomp_setup(unsigned long arch_id)
 
 		/* TCI6614 boards */
 		DEBUG_LL_TCI6614(tci6614_sim,		0);
+		DEBUG_LL_TCI6614(tci6614_evm,		0);
 	} while (0);
 }
 
