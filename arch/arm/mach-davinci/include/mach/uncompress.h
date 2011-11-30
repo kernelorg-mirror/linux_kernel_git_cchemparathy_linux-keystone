@@ -94,6 +94,9 @@ static inline void __arch_decomp_setup(unsigned long arch_id)
 
 		/* TNETV107x boards */
 		DEBUG_LL_TNETV107X(tnetv107x,		1);
+
+		/* TCI6614 boards */
+		DEBUG_LL_TCI6614(tci6614_sim,		0);
 	} while (0);
 }
 
