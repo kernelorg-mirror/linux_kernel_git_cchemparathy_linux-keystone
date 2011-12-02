@@ -660,6 +660,12 @@ __armv7_mmu_cache_on:
 		orr	r0, r0, #1 << 25	@ big-endian page tables
 #endif
 		mrcne   p15, 0, r6, c2, c0, 2   @ read ttb control reg
+#ifdef CONFIG_CPU_DCACHE_DISABLE
+		bic	r0, r0, #1 << 2
+#endif
+#ifdef CONFIG_CPU_ICACHE_DISABLE
+		bic	r0, r0, #1 << 12
+#endif
 		orrne	r0, r0, #1		@ MMU enabled
 		movne	r1, #0xfffffffd		@ domain 0 = client
 		bic     r6, r6, #1 << 31        @ 32-bit translation system
