@@ -39,28 +39,28 @@
 #include <mach/aemif.h>
 
 static struct mtd_partition nand_partitions[] = {
-	/* bootloader (U-Boot, etc) in first 12 sectors */
+	/* U-Boot in first 1M */
 	{
 		.name		= "u-boot",
 		.offset		= 0,
 		.size		= (8 * SZ_128K),
 		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
 	},
-	/* bootloader params in the next sector */
+	/* bootloader params in the next 512K */
 	{
 		.name		= "params",
 		.offset		= MTDPART_OFS_NXTBLK,
 		.size		= (4 * SZ_128K),
 		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
 	},
-	/* kernel */
+	/* kernel in the next 4M */
 	{
 		.name		= "kernel",
 		.offset		= MTDPART_OFS_NXTBLK,
 		.size		= SZ_4M,
 		.mask_flags	= 0,
 	},
-	/* file system */
+	/* file system in the remaining */
 	{
 		.name		= "filesystem",
 		.offset		= MTDPART_OFS_NXTBLK,
@@ -114,11 +114,19 @@ static struct davinci_uart_config serial_config __initconst = {
 };
 
 static struct mtd_partition spi_nor_partitions[] = {
+	/* u-boot-spl in the first 512K */
 	{
-		.name = "u-boot-spl",
-		.offset = 0,
-		.size = MTDPART_SIZ_FULL,
-		.mask_flags = MTD_WRITEABLE,
+		.name		= "u-boot-spl",
+		.offset		= 0,
+		.size		= (4 * SZ_128K),
+		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
+	},
+	/* test block in the remaining */
+	{
+		.name		= "test",
+		.offset		= MTDPART_OFS_NXTBLK,
+		.size		= MTDPART_SIZ_FULL,
+		.mask_flags	= 0,
 	},
 };
 
