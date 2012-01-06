@@ -177,61 +177,53 @@ define_pll_div_clk(main_pll, 13, main_div_chip_dftclk8);
 
 
 /* Alawys on domains */
-lpsc_clk_enabled(modrst0,	main_div_chip_clk6, MODRST0);
-lpsc_clk_enabled(src3_pwr,	main_div_chip_smreflex_clk, SRC3_PWR);
+lpsc_clk_enabled(modrst0,		main_div_chip_clk6, MODRST0);
+lpsc_clk_enabled(src3_pwr,		main_div_chip_smreflex_clk, SRC3_PWR);
+lpsc_clk_enabled(emif4f,		main_div_chip_clk1, EMIF4F);
+lpsc_clk_enabled(monza_rst_ctrl,	main_div_chip_clk1, MONZA_RST_CTRL);
 
 /* There are 2 more clocks coming to some of the modules below and only
  * one of the clock is mentioned as parent clock. Assume they are
  * automatically enabled by gpsc
  */
-lpsc_clk_enabled(emif4f,	main_div_chip_clk1, EMIF4F);
-lpsc_clk_enabled(timer0,	clk_modrst0, MODRST0);
-lpsc_clk_enabled(timer1,	clk_modrst0, MODRST0);
-lpsc_clk_enabled(uart0,		clk_modrst0, MODRST0);
-lpsc_clk_enabled(uart1,		clk_modrst0, MODRST0);
-lpsc_clk_enabled(aemif,		clk_modrst0, MODRST0);
-lpsc_clk_enabled(i2c,		clk_modrst0, MODRST0);
-lpsc_clk_enabled(spi,		clk_modrst0, MODRST0);
-lpsc_clk_enabled(gpio,		clk_modrst0, MODRST0);
-lpsc_clk_enabled(key_mgr,	clk_modrst0, MODRST0);
-lpsc_clk_enabled(arm,		main_div_chip_clk1, ARM);
+lpsc_clk_enabled(timer0,		clk_modrst0, MODRST0);
+lpsc_clk_enabled(timer1,		clk_modrst0, MODRST0);
+lpsc_clk_enabled(uart0,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(uart1,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(aemif,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(usim,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(i2c,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(spi,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(gpio,			clk_modrst0, MODRST0);
+lpsc_clk_enabled(key_mgr,		clk_modrst0, MODRST0);
 
 /* SW controlled domains */
-lpsc_clk(vcp2_a,	main_div_chip_clk3, VCP2_A, ALWAYSON);
-lpsc_clk(debugss_trc,	main_div_chip_clk3, DEBUGSS_TRC, DEBUG_TRC);
-lpsc_clk(tetb_trc,	main_div_chip_clk6, TETB_TRC, DEBUG_TRC);
-lpsc_clk(pktproc,	main_div_chip_clk3, PKTPROC, PASS);
-lpsc_clk(cpgmac,	main_div_chip_clk3, CPGMAC, PASS);
-lpsc_clk(crypto,	main_div_chip_clk1, CRYPTO, PASS);
-/* TODO showing as clk2/dftclk4 */
-lpsc_clk(pciex,		main_div_chip_clk2, PCIEX, PCIEX);
-lpsc_clk(srio,		main_div_chip_clk3_srio, SRIO, SRIO);
-lpsc_clk(vusr,		main_div_chip_clk2, VUSR, HYPERBRIDGE);
-lpsc_clk(msmcsram,	main_div_chip_clk2, MSMCSRAM, MSMCSRAM);
-lpsc_clk(rac,		main_div_chip_clk1, RAC, RAC_TAC);
-lpsc_clk(tac,		main_div_chip_clk3, TAC, RAC_TAC);
-lpsc_clk(fftc,		main_div_chip_clk3, FFTC, FFTC);
-/* TODO can't find the block in the clock distribution schematics.
- * Is this same as AF?
- */
-lpsc_clk(drfe,		main_div_chip_clk3, DRFE, DRFE);
-lpsc_clk(tcp3d,		main_div_chip_clk2, TCP3D, TCP3D);
-/* TODO only one VCP block shown in the schmatics */
-lpsc_clk(vcp2_b,	main_div_chip_clk3, VCP2_B, VCP_BCD);
-lpsc_clk(vcp2_c,	main_div_chip_clk3, VCP2_C, VCP_BCD);
-lpsc_clk(vcp2_d,	main_div_chip_clk3, VCP2_D, VCP_BCD);
-lpsc_clk(bcp,		main_div_chip_clk3, BCP,  BCP);
-lpsc_clk(gem1,		main_div_chip_clk1, GEM1, GEM1);
-lpsc_clk(rsax2_1,	main_div_chip_clk1, RSAX2_1, GEM1);
-lpsc_clk(gem0,		main_div_chip_clk1, GEM0, GEM2);
-lpsc_clk(rsax2_0,	main_div_chip_clk1, RSAX2_0, GEM2);
-lpsc_clk(tcp2,		main_div_chip_clk2, TCP2, TCP2);
-/* TODO can't find the block in the clock distribution schematics.
- * Same as BCP??
- */
-lpsc_clk(dxb,		main_div_chip_clk3, DXB, DXB);
-
-
+lpsc_clk(vusr,				main_div_chip_clk2, VUSR, ALWAYSON);
+lpsc_clk(vcp2_a,			main_div_chip_clk3, VCP2_A, ALWAYSON);
+lpsc_clk(debugss_trc,			main_div_chip_clk3, DEBUGSS_TRC, DEBUG_TRC);
+lpsc_clk(tetb_trc,			main_div_chip_clk3, TETB_TRC, DEBUG_TRC);
+lpsc_clk(pktproc,			main_div_chip_clk3, PKTPROC, PASS);
+lpsc_clk(cpgmac,			main_div_chip_clk3, CPGMAC, PASS);
+lpsc_clk(crypto,			main_div_chip_clk1, CRYPTO, PASS);
+lpsc_clk(pciex,				main_div_chip_clk2, PCIEX, PCIEX);
+lpsc_clk(srio,				main_div_chip_clk3_srio, SRIO, SRIO);
+lpsc_clk(bcp,				main_div_chip_clk3, BCP,  BCP);
+lpsc_clk(msmcsram,			main_div_chip_clk2, MSMCSRAM, MSMCSRAM);
+lpsc_clk(rac,				main_div_chip_clk1, RAC, RAC_TAC);
+lpsc_clk(tac,				main_div_chip_clk3, TAC, RAC_TAC);
+lpsc_clk(fftc,				main_div_chip_clk3, FFTC, FFTC);
+lpsc_clk(aif2,				main_div_chip_clk3, AIF2, AIF2);
+lpsc_clk(tcp3d,				main_div_chip_clk2, TCP3D, TCP3D);
+lpsc_clk(vcp2_b,			main_div_chip_clk3, VCP2_B, VCP_BCD);
+lpsc_clk(vcp2_c,			main_div_chip_clk3, VCP2_C, VCP_BCD);
+lpsc_clk(vcp2_d,			main_div_chip_clk3, VCP2_D, VCP_BCD);
+lpsc_clk(gem0,				main_div_chip_clk1, GEM0, GEM0);
+lpsc_clk(gem1,				main_div_chip_clk1, GEM1, GEM1);
+lpsc_clk(rsax2_1,			main_div_chip_clk1, RSAX2_1, GEM1);
+lpsc_clk(gem2,				main_div_chip_clk1, GEM2, GEM2);
+lpsc_clk(rsax2_0,			main_div_chip_clk1, RSAX2_0, GEM2);
+lpsc_clk(gem3,				main_div_chip_clk1, GEM3, GEM3);
+lpsc_clk(tcp3d_b,			main_div_chip_clk2, TCP3D_B, TCP3D_B);
 
 static struct clk_lookup clks[] = {
 	CLK(NULL, "ref_clk",			&ref_clk),
@@ -254,6 +246,7 @@ static struct clk_lookup clks[] = {
 	CLK(NULL,		"clk_modrst0",		&clk_modrst0),
 	CLK(NULL,		"clk_src3_pwr",		&clk_src3_pwr),
 	CLK(NULL,		"clk_emif4f",		&clk_emif4f),
+	CLK(NULL,		"clk_vusr",		&clk_vusr),
 	CLK(NULL,		"clk_vcp2_a",		&clk_vcp2_a),
 	CLK(NULL,		"clk_debugss_trc",	&clk_debugss_trc),
 	CLK(NULL,		"clk_tetb_trc",		&clk_tetb_trc),
@@ -262,30 +255,31 @@ static struct clk_lookup clks[] = {
 	CLK(NULL,		"clk_crypto",		&clk_crypto),
 	CLK(NULL,		"clk_pciex",		&clk_pciex),
 	CLK(NULL,		"clk_srio",		&clk_srio),
-	CLK(NULL,		"clk_vusr",		&clk_vusr),
+	CLK(NULL,		"clk_bcp",		&clk_bcp),
+	CLK(NULL,		"clk_monza_rst_ctrl",	&clk_monza_rst_ctrl),
 	CLK(NULL,		"clk_msmcsram",		&clk_msmcsram),
 	CLK(NULL,		"clk_rac",		&clk_rac),
 	CLK(NULL,		"clk_tac",		&clk_tac),
 	CLK(NULL,		"clk_fftc",		&clk_fftc),
-	CLK(NULL,		"clk_drfe",		&clk_drfe),
+	CLK(NULL,		"clk_aif2",		&clk_aif2),
 	CLK(NULL,		"clk_tcp3d",		&clk_tcp3d),
 	CLK(NULL,		"clk_vcp2_b",		&clk_vcp2_b),
 	CLK(NULL,		"clk_vcp2_c",		&clk_vcp2_c),
 	CLK(NULL,		"clk_vcp2_d",		&clk_vcp2_d),
-	CLK(NULL,		"clk_bcp",		&clk_bcp),
-	CLK(NULL,		"clk_gem1",		&clk_gem1),
+	CLK("keystone-rproc.0",	NULL,                   &clk_gem0),
+	CLK("keystone-rproc.1",	NULL,                   &clk_gem1),
+	CLK("keystone-rproc.2",	NULL,                   &clk_gem2),
+	CLK("keystone-rproc.3",	NULL,                   &clk_gem3),
 	CLK(NULL,		"clk_rsax2_1",		&clk_rsax2_1),
-	CLK(NULL,		"clk_gem0",		&clk_gem0),
 	CLK(NULL,		"clk_rsax2_0",		&clk_rsax2_0),
-	CLK(NULL,		"clk_arm",		&clk_arm),
-	CLK(NULL,		"clk_tcp2",		&clk_tcp2),
-	CLK(NULL,		"clk_dxb",		&clk_dxb),
+	CLK(NULL,		"clk_tcp3d_b",		&clk_tcp3d_b),
 
 	CLK(NULL,		"timer0",		&clk_timer0),
 	CLK("watchdog",		NULL,			&clk_timer1),
 	CLK(NULL,		"uart0",		&clk_uart0),
 	CLK(NULL,		"uart1",		&clk_uart1),
 	CLK(NULL,		"aemif",		&clk_aemif),
+	CLK(NULL,		"usim",			&clk_usim),
 	CLK("i2c_davinci.1",	NULL,			&clk_i2c),
 	CLK("spi_davinci.0",	NULL,			&clk_spi),
 	CLK(NULL,		"gpio",			&clk_gpio),
