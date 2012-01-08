@@ -1,0 +1,11 @@
+#
+# Generic HWQUEUE framework
+#
+
+# HWQUEUE always gets selected by whoever wants it.
+config HWQUEUE
+	tristate
+
+menu "Hardware Queue drivers"
+
+endmenu
