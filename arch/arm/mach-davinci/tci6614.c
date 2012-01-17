@@ -205,6 +205,7 @@ lpsc_clk(tetb_trc,			main_div_chip_clk3, TETB_TRC, DEBUG_TRC);
 lpsc_clk(pktproc,			main_div_chip_clk3, PKTPROC, PASS);
 lpsc_clk(cpgmac,			main_div_chip_clk3, CPGMAC, PASS);
 lpsc_clk(crypto,			main_div_chip_clk1, CRYPTO, PASS);
+lpsc_clk(mdio,				main_div_chip_clk3, CPGMAC, PASS);
 lpsc_clk(pciex,				main_div_chip_clk2, PCIEX, PCIEX);
 lpsc_clk(srio,				main_div_chip_clk3_srio, SRIO, SRIO);
 lpsc_clk(bcp,				main_div_chip_clk3, BCP,  BCP);
@@ -250,9 +251,10 @@ static struct clk_lookup clks[] = {
 	CLK(NULL,		"clk_vcp2_a",		&clk_vcp2_a),
 	CLK(NULL,		"clk_debugss_trc",	&clk_debugss_trc),
 	CLK(NULL,		"clk_tetb_trc",		&clk_tetb_trc),
-	CLK(NULL,		"clk_pktproc",		&clk_pktproc),
-	CLK(NULL,		"clk_cpgmac",		&clk_cpgmac),
-	CLK(NULL,		"clk_crypto",		&clk_crypto),
+	CLK("2090000.netcp",	"clk_pktproc",		&clk_pktproc),
+	CLK("2090000.netcp",	"clk_cpgmac",		&clk_cpgmac),
+	CLK("20c0000.crypto",	NULL,			&clk_crypto),
+	CLK("2090300.mdio",	NULL,			&clk_mdio),
 	CLK(NULL,		"clk_pciex",		&clk_pciex),
 	CLK(NULL,		"clk_srio",		&clk_srio),
 	CLK(NULL,		"clk_bcp",		&clk_bcp),
