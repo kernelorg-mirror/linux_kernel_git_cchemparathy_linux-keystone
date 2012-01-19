@@ -18,6 +18,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/clk.h>
 #include <linux/slab.h>
+#include <linux/hwspinlock.h>
 
 #include <mach/common.h>
 #include <mach/irqs.h>
@@ -33,6 +34,7 @@
 #define TCI6614_WDOG_BASE			0x02280000
 #define TCI6614_I2C_BASE			0x02530000
 #define TCI6614_SPI_BASE			0x20BF0000
+#define TCI6614_SEM_BASE			0x02640000
 #define TCI6614_ASYNC_EMIF_CNTRL_BASE		0x20C00000
 #define TCI6614_ASYNC_EMIF_DATA_CE0_BASE	0x70000000
 #define TCI6614_ASYNC_EMIF_DATA_CE1_BASE	0x74000000
@@ -157,6 +159,26 @@ struct platform_device tci6614_wdt_device = {
 	.resource	= wdt_resources,
 };
 
+static struct hwspinlock_pdata sem_data = {
+	.base_id	= 0,
+};
+
+static struct resource sem_resources[] = {
+	{
+		.start	= TCI6614_SEM_BASE,
+		.end	= TCI6614_SEM_BASE + 0x7ff,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device tci6614_sem_device = {
+	.name			= "keystone_hwspinlock",
+	.id			= -1,
+	.num_resources		= ARRAY_SIZE(sem_resources),
+	.resource		= sem_resources,
+	.dev.platform_data	= &sem_data,
+};
+
 static int __init nand_init(int chipsel, struct davinci_nand_pdata *data)
 {
 	struct resource res[2];
@@ -206,6 +228,7 @@ void __init tci6614_devices_init(struct tci6614_device_info *info)
 		davinci_serial_init(info->serial_config);
 
 	platform_device_register(&tci6614_wdt_device);
+	platform_device_register(&tci6614_sem_device);
 
 	for (i = 0; i < 4; i++)
 		if (info->nand_config[i])
