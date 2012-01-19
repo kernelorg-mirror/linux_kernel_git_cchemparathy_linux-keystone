@@ -1,0 +1,38 @@
+#!/bin/bash
+
+branches()
+{
+	stem="$1"
+	git branch -al | sed 's:^..::g' |
+		if [ -n "$stem" ]
+		then
+			grep "^$stem/" | sed "s:^$stem/::g"
+		else
+			cat
+		fi
+}
+
+tree_checkout()
+{
+	tree=$1; shift;
+	remote_branch=$1; shift;
+
+	if [ -z "$tree" ] || [ -z "$remote_branch" ]
+	then
+		echo "tree_checkout: checkout local branches from remote" >&2
+		echo >&2
+		echo "Usage: tree_checkout <tree> <remote-branch>" >&2
+		echo "Example: tree_checkout my_expt origin/experimental" >&2
+		exit 1
+	fi
+
+	branches=`branches remotes/$remote_branch | grep '^rebuild/'`
+
+	for branch in origin $branches master
+	do
+		echo === checking out $tree/$branch
+		git checkout -b $tree/$branch $remote_branch/$branch
+	done
+}
+
+`basename $0` $*

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+branches()
+{
+	stem="$1"
+	git branch -al | sed 's:^..::g' |
+		if [ -n "$stem" ]
+		then
+			grep "^$stem/" | sed "s:^$stem/::g"
+		else
+			cat
+		fi
+}
+
+tree_rebuild() {
+	tree=$1; shift;
+
+	if [ -z "$tree" ]
+	then
+		echo "tree_rebuild: rebuild tree master" >&2
+		echo >&2
+		echo "Usage: tree_rebuild <tree>" >&2
+		echo "Example: tree_rebuild my_expt" >&2
+		exit 1
+	fi
+
+	rebuild=`branches $tree | grep '^rebuild/' | sort`
+	git checkout $tree/master
+	git reset --hard $tree/origin
+	for branch in $rebuild
+	do
+		echo ==== merging $tree/$branch
+		git merge $tree/$branch
+	done
+	echo ==== rebasing $tree/master against $tree/origin
+	git rebase $tree/origin
+}
+
+`basename $0` $*
