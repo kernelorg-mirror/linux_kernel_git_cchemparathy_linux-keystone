@@ -1,0 +1,45 @@
+#!/bin/bash
+
+branches()
+{
+	stem="$1"
+	git branch -al | sed 's:^..::g' |
+		if [ -n "$stem" ]
+		then
+			grep "^$stem/" | sed "s:^$stem/::g"
+		else
+			cat
+		fi
+}
+
+tree_rm()
+{
+	tree=$1; shift;
+
+	if [ -z "$tree" ]
+	then
+		echo "tree_rm: remove a local tree" >&2
+		echo >&2
+		echo "Usage: tree_rm <tree> [-f]" >&2
+		echo "   -f: force branch delete" >&2
+		echo "Example: tree_rm my_expt -f" >&2
+		exit 1
+	fi
+
+	if [ "$1" = "-f" ]
+	then
+		flag="-D"
+	else
+		flag="-d"
+	fi
+
+	branches=`branches $tree`
+
+	for branch in $branches
+	do
+		echo === removing $tree/$branch
+		git branch $flag $tree/$branch
+	done
+}
+
+`basename $0` $*

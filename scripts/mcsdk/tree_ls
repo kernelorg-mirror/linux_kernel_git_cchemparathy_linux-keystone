@@ -1,0 +1,35 @@
+#!/bin/bash
+
+branches()
+{
+	stem="$1"
+	git branch -al | sed 's:^..::g' |
+		if [ -n "$stem" ]
+		then
+			grep "^$stem/" | sed "s:^$stem/::g"
+		else
+			cat
+		fi
+}
+
+tree_ls()
+{
+	tree=$1; shift;
+
+	if [ -z "$tree" ]
+	then
+		echo "tree_ls: list branches in a tree" >&2
+		echo >&2
+		echo "Usage: tree_ls <tree>" >&2
+		exit 1
+	fi
+
+	branches=`branches $tree`
+
+	for branch in $branches
+	do
+		echo $tree/$branch
+	done
+}
+
+`basename $0` $*
