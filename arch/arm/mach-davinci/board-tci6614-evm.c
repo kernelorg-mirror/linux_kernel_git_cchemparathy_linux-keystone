@@ -54,16 +54,9 @@ static struct mtd_partition nand_partitions[] = {
 		.size		= (4 * SZ_128K),
 		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
 	},
-	/* kernel in the next 4M */
+	/* partition for UBIFS filesystem */
 	{
-		.name		= "kernel",
-		.offset		= MTDPART_OFS_NXTBLK,
-		.size		= SZ_4M,
-		.mask_flags	= 0,
-	},
-	/* file system in the remaining */
-	{
-		.name		= "filesystem",
+		.name		= "ubifs",
 		.offset		= MTDPART_OFS_NXTBLK,
 		.size		= MTDPART_SIZ_FULL,
 		.mask_flags	= 0,
