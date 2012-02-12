@@ -602,10 +602,9 @@ struct device_node *of_find_matching_node_by_address(struct device_node *from,
 	return NULL;
 }
 
-
 /**
  * of_iomap - Maps the memory mapped IO for a given device_node
- * @device:	the device whose io range will be mapped
+ * @device_node: Ptr to the device node that has the reg property
  * @index:	index of the io range
  *
  * Returns a pointer to the mapped memory
@@ -617,6 +616,31 @@ void __iomem *of_iomap(struct device_node *np, int index)
 	if (of_address_to_resource(np, index, &res))
 		return NULL;
 
-	return ioremap(res.start, resource_size(&res));
+	return (ioremap(res.start, resource_size(&res)));
+
 }
 EXPORT_SYMBOL(of_iomap);
+
+/**
+ * of_devm_iomap - devres version of of_iomap
+ * @device:	the device whose io range will be mapped
+ * @index:	index of the io range
+ *
+ * Returns a pointer to the mapped memory
+ */
+void __iomem *of_devm_iomap(struct device *dev, int index)
+{
+	struct device_node *np;
+	struct resource res;
+
+	if (!dev)
+		return NULL;
+
+	np = dev->of_node;
+	if (of_address_to_resource(np, index, &res))
+		return NULL;
+
+	return devm_ioremap(dev, res.start, resource_size(&res));
+}
+EXPORT_SYMBOL(of_devm_iomap);
+
