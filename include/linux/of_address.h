@@ -3,6 +3,7 @@
 #include <linux/ioport.h>
 #include <linux/errno.h>
 #include <linux/of.h>
+#include <linux/device.h>
 
 #ifdef CONFIG_OF_ADDRESS
 extern u64 of_translate_address(struct device_node *np, const __be32 *addr);
@@ -13,6 +14,7 @@ extern struct device_node *of_find_matching_node_by_address(
 					const struct of_device_id *matches,
 					u64 base_address);
 extern void __iomem *of_iomap(struct device_node *device, int index);
+extern void __iomem *of_devm_iomap(struct device *dev, int index);
 
 /* Extract an address from a device, returns the region size and
  * the address space flags too. The PCI version uses a BAR number
