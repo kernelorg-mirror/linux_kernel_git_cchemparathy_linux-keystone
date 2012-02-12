@@ -441,6 +441,26 @@ struct device_node *of_find_node_by_name(struct device_node *from,
 EXPORT_SYMBOL(of_find_node_by_name);
 
 /**
+ *	of_find_child_by_name - Find a child node by its "name" property
+ *	@parent:The parent node to search from
+ *	@name:	The name string to match against
+ *
+ *	Returns a node pointer with refcount incremented, use
+ *	of_node_put() on it when done.
+ */
+struct device_node *of_find_child_by_name(struct device_node *parent,
+					  const char *name)
+{
+	struct device_node *child;
+
+	for_each_child_of_node(parent, child)
+		if (child->name && of_node_cmp(child->name, name) == 0)
+			break;
+	return child;
+}
+EXPORT_SYMBOL(of_find_child_by_name);
+
+/**
  *	of_find_node_by_type - Find a node by its "device_type" property
  *	@from:	The node to start searching from, or NULL to start searching
  *		the entire device tree. The node you pass will not be
