@@ -20,6 +20,8 @@
 #include <linux/slab.h>
 #include <linux/hwspinlock.h>
 
+#include <asm/pmu.h>
+
 #include <mach/common.h>
 #include <mach/irqs.h>
 #include <mach/edma.h>
@@ -179,6 +181,21 @@ struct platform_device tci6614_sem_device = {
 	.dev.platform_data	= &sem_data,
 };
 
+static struct resource pmu_resources[] = {
+	{
+		.start	= IRQ_TCI6614_BENCH,
+		.end	= IRQ_TCI6614_BENCH,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device tci6614_pmu_device = {
+	.name		= "arm-pmu",
+	.id		= ARM_PMU_DEVICE_CPU,
+	.resource	= pmu_resources,
+	.num_resources	= ARRAY_SIZE(pmu_resources),
+};
+
 static int __init nand_init(int chipsel, struct davinci_nand_pdata *data)
 {
 	struct resource res[2];
@@ -229,6 +246,7 @@ void __init tci6614_devices_init(struct tci6614_device_info *info)
 
 	platform_device_register(&tci6614_wdt_device);
 	platform_device_register(&tci6614_sem_device);
+	platform_device_register(&tci6614_pmu_device);
 
 	for (i = 0; i < 4; i++)
 		if (info->nand_config[i])
