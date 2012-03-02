@@ -50,13 +50,17 @@
 
 #define TCI6614_BOOT_CFG_DEVSTAT		(TCI6614_BOOT_CFG_BASE + 0x20)
 #define TCI6614_MAINPLL_CTL0			(TCI6614_BOOT_CFG_BASE + 0x328)
-#define TCI6614_MAINPLL_CTL0			(TCI6614_BOOT_CFG_BASE + 0x328)
 #define TCI6614_PLLCTRL_PLLM			(TCI6614_PLL_BASE + 0x0110)
+#define TCI6614_RSTMUX8				(TCI6614_BOOT_CFG_BASE + 0x0318)
 #define TCI6614_DEFAULT_IN_CLK			50000000
 #define MAINPLL_CTL0_PLLM_MASK			0x7F000
 #define MAINPLL_CTL0_PLLM_SHIFT			6
 #define MAINPLL_CTL0_PLLD_MASK			0x3f
 #define PLLCTRL_PLLM_MASK			0x3f
+#define RSTMUX8_OMODE_DEVICE_RESET		5
+#define RSTMUX8_OMODE_DEVICE_RESET_SHIFT	1
+#define RSTMUX8_OMODE_DEVICE_RESET_MASK		(BIT(1) | BIT(2) | BIT(3))
+#define RSTMUX8_LOCK_MASK			BIT(0)
 
 /* PSC control registers */
 static u32 psc_regs[] = { TCI6614_PSC_BASE };
@@ -455,7 +459,25 @@ static struct davinci_soc_info tci6614_soc_info = {
 
 void __init tci6614_init(void)
 {
+	void __iomem *rstmux8;
+	u32 val;
+
 	davinci_common_init(&tci6614_soc_info);
+	/* Configure the RSTMUX8 register so that a WD output will trigger a
+	   device reset
+	 */
+	rstmux8 = ioremap(TCI6614_RSTMUX8, 4);
+	WARN_ON(!rstmux8);
+	if (rstmux8) {
+		val = __raw_readl(rstmux8) & ~RSTMUX8_OMODE_DEVICE_RESET_MASK;
+		if (!(val & RSTMUX8_LOCK_MASK)) {
+			val |= (RSTMUX8_OMODE_DEVICE_RESET <<
+					RSTMUX8_OMODE_DEVICE_RESET_SHIFT);
+			__raw_writel(val, rstmux8);
+		} else
+			printk(KERN_NOTICE "Warning, can't write to RSTMUX8\n");
+	}
+	iounmap(rstmux8);
 }
 
 static void __iomem *cpintc_base;
