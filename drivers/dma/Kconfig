@@ -292,6 +292,15 @@ config DMA_OMAP
 	select DMA_ENGINE
 	select DMA_VIRTUAL_CHANNELS
 
+config KEYSTONE_DMA
+	bool "TI Keystone platform Packet DMA support"
+	depends on TI_KEYSTONE
+	default y if TI_KEYSTONE
+	select DMA_ENGINE
+	help
+	  Enable support for the Packet DMA engine on Texas Instruments'
+	  Keystone family of devices.
+
 config DMA_ENGINE
 	bool
 
