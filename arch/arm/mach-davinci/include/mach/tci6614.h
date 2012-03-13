@@ -47,13 +47,13 @@ struct tci6614_device_info {
 };
 
 extern void __init omap_aintc_init(void);
-extern struct platform_device tci6614_wdt_device;
 extern struct platform_device tci6614_serial_device;
 
 extern void __init tci6614_init(void);
 extern void __init tci6614_devices_init(struct tci6614_device_info *);
 extern void __init tci6614_irq_init(void);
 extern void __init tci6614_intc_init(void);
+extern void tci6614_restart(char mode, const char *cmd);
 
 #endif
 

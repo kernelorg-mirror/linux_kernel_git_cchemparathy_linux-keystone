@@ -22,7 +22,6 @@
 
 #include <asm/mach/map.h>
 
-#include <mach/vmalloc.h>
 #include <mach/common.h>
 #include <mach/time.h>
 #include <mach/cputype.h>
@@ -454,7 +453,6 @@ static struct davinci_soc_info tci6614_soc_info = {
 	.gpio_irq		= IRQ_TCI6614_GPINT0,
 	.timer_info		= &timer_info,
 	.serial_dev		= &tci6614_serial_device,
-	.reset_device		= &tci6614_wdt_device,
 };
 
 void __init tci6614_init(void)

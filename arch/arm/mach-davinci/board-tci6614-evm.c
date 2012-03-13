@@ -215,4 +215,5 @@ MACHINE_START(TCI6614_EVM, "TCI6614 EVM")
 	.timer		= &davinci_timer,
 	.init_machine	= tci6614_evm_board_init,
 	.dt_compat	= tci6614_dt_board_compat,
+	.restart	= tci6614_restart,
 MACHINE_END

@@ -237,6 +237,11 @@ static int __init nand_init(int chipsel, struct davinci_nand_pdata *data)
 	return platform_device_register(pdev);
 }
 
+void tci6614_restart(char mode, const char *cmd)
+{
+	davinci_watchdog_reset(&tci6614_wdt_device);
+}
+
 void __init tci6614_devices_init(struct tci6614_device_info *info)
 {
 	int i;
