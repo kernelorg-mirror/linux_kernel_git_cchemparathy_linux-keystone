@@ -64,13 +64,13 @@ static struct mtd_partition nand_partitions[] = {
 };
 
 static struct davinci_aemif_timing evm_nandflash_timing = {
-	.wsetup		= 0xf,
-	.wstrobe	= 0x3f,
-	.whold		= 0x7,
-	.rsetup		= 0xf,
-	.rstrobe	= 0x3f,
-	.rhold		= 7,
-	.ta		= 3,
+	.wsetup		= 96,
+	.wstrobe	= 390,
+	.whold		= 48,
+	.rsetup		= 96,
+	.rstrobe	= 390,
+	.rhold		= 48,
+	.ta		= 24,
 };
 
 static struct davinci_nand_pdata nand_config = {

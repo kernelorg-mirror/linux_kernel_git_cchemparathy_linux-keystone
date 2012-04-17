@@ -20,14 +20,12 @@
 
 /* All timings in nanoseconds */
 struct davinci_aemif_timing {
+	u16	wstrobe;
+	u16	rstrobe;
 	u8	wsetup;
-	u8	wstrobe;
 	u8	whold;
-
 	u8	rsetup;
-	u8	rstrobe;
 	u8	rhold;
-
 	u8	ta;
 };
 
