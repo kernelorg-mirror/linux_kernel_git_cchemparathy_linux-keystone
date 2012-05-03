@@ -301,6 +301,16 @@ config KEYSTONE_DMA
 	  Enable support for the Packet DMA engine on Texas Instruments'
 	  Keystone family of devices.
 
+config KEYSTONE_UDMA
+	tristate "Zero Copy User Mode DMA client"
+	depends on KEYSTONE_DMA
+	default y if KEYSTONE_DMA
+	select VIRTIO
+	select VIRTIO_RING
+	help
+	  Simple user mode DMA client with zero copy semantics.  Say N unless
+	  you really know what you're doing.
+
 config DMA_ENGINE
 	bool
 
