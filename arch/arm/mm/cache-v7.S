@@ -329,9 +329,10 @@ ENDPROC(v7_dma_flush_range)
  */
 ENTRY(v7_dma_map_area)
 	add	r1, r1, r0
-	teq	r2, #DMA_FROM_DEVICE
-	beq	v7_dma_inv_range
-	b	v7_dma_clean_range
+	cmp	r2, #DMA_TO_DEVICE
+	beq	v7_dma_clean_range
+	bcs	v7_dma_inv_range
+	b	v7_dma_flush_range
 ENDPROC(v7_dma_map_area)
 
 /*
