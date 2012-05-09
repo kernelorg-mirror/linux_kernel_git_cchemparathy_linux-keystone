@@ -509,6 +509,20 @@ config USB_SWITCH_FSA9480
 	  stereo and mono audio, video, microphone and UART data to use
 	  a common connector port.
 
+config KEYSTONE_IPC_IRQ
+	tristate "KEYSTONE IPC IRQ Chip"
+	depends on TI_KEYSTONE
+	default y
+	help
+	  Say y here to support IPC IRQ chip for keystone devices. The user
+	  can request IRQs for the 28 source ID bits of the IPCARH register
+	  using this IPC interrupt driver. 
+
+	  Usually you want to say y here, in order to use this facility.
+
+	  It's safe to say n here if you're not interested in
+	  IPC IRQ chip or if you want a minimal kernel build.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
