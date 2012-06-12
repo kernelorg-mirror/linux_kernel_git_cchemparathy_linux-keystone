@@ -27,6 +27,7 @@
 #include <linux/completion.h>
 
 #include <linux/atomic.h>
+#include <asm/smp_ops.h>
 #include <asm/cacheflush.h>
 #include <asm/cpu.h>
 #include <asm/cputype.h>
@@ -100,8 +101,83 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 	return ret;
 }
 
+/* SMP helpers */
+static const struct smp_init_ops *smp_init_ops __initdata;
+static const struct smp_secondary_ops *smp_secondary_ops  __cpuinitdata;
+static struct smp_secondary_ops __smp_secondary_ops __cpuinitdata;
+#ifdef CONFIG_HOTPLUG_CPU
+static const struct smp_hotplug_ops *smp_hotplug_ops;
+static struct smp_hotplug_ops __smp_hotplug_ops;
+#endif
+
+void __init smp_ops_register(struct smp_ops *smp_ops)
+{
+	if (!smp_ops)
+		return;
+
+	smp_init_ops = &smp_ops->init_ops;
+
+	/*
+	 * Warning: we're copying an __initdata structure into a
+	 * __cpuinitdata structure. We *know* it is valid because only
+	 * __cpuinit (or more persistant) functions should be pointed
+	 * to by soc_smp_ops. Still, this is borderline ugly.
+	 */
+	__smp_secondary_ops = smp_ops->secondary_ops;
+	smp_secondary_ops = &__smp_secondary_ops;
+#ifdef CONFIG_HOTPLUG_CPU
+	__smp_hotplug_ops = smp_ops->hotplug_ops;
+	smp_hotplug_ops = &__smp_hotplug_ops;
+#endif
+}
+
+void __attribute__((weak)) __init smp_init_cpus(void)
+{
+	if (smp_init_ops && smp_init_ops->smp_init_cpus)
+		smp_init_ops->smp_init_cpus();
+}
+
+void __attribute__((weak)) __init platform_smp_prepare_cpus(unsigned int max_cpus)
+{
+	if (smp_init_ops && smp_init_ops->smp_prepare_cpus)
+		smp_init_ops->smp_prepare_cpus(max_cpus);
+}
+
+void __attribute__((weak)) __cpuinit platform_secondary_init(unsigned int cpu)
+{
+	if (smp_secondary_ops && smp_secondary_ops->smp_secondary_init)
+		smp_secondary_ops->smp_secondary_init(cpu);
+}
+
+int __attribute__((weak)) __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
+{
+	if (smp_secondary_ops && smp_secondary_ops->smp_boot_secondary)
+		return smp_secondary_ops->smp_boot_secondary(cpu, idle);
+	return -ENOSYS;
+}
+
 #ifdef CONFIG_HOTPLUG_CPU
 static void percpu_timer_stop(void);
+
+int __attribute__((weak)) platform_cpu_kill(unsigned int cpu)
+{
+	if (smp_hotplug_ops && smp_hotplug_ops->cpu_kill)
+		return smp_hotplug_ops->cpu_kill(cpu);
+	return 0;
+}
+
+void __attribute__((weak)) platform_cpu_die(unsigned int cpu)
+{
+	if (smp_hotplug_ops && smp_hotplug_ops->cpu_die)
+		smp_hotplug_ops->cpu_die(cpu);
+}
+
+int __attribute__((weak)) platform_cpu_disable(unsigned int cpu)
+{
+	if (smp_hotplug_ops && smp_hotplug_ops->cpu_disable)
+		return smp_hotplug_ops->cpu_disable(cpu);
+	return -EPERM;
+}
 
 /*
  * __cpu_disable runs on the processor to be shutdown.

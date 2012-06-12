@@ -45,6 +45,7 @@
 #include <asm/cacheflush.h>
 #include <asm/cachetype.h>
 #include <asm/tlbflush.h>
+#include <asm/smp_ops.h>
 
 #include <asm/prom.h>
 #include <asm/mach/arch.h>
@@ -947,6 +948,7 @@ void __init setup_arch(char **cmdline_p)
 		mdesc = setup_machine_tags(machine_arch_type);
 	machine_desc = mdesc;
 	machine_name = mdesc->name;
+	smp_ops_register(mdesc->smp_ops);
 
 	setup_dma_zone(mdesc);
 
