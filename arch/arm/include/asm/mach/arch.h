@@ -14,6 +14,7 @@ struct tag;
 struct meminfo;
 struct sys_timer;
 struct pt_regs;
+struct smp_ops;
 
 struct machine_desc {
 	unsigned int		nr;		/* architecture number	*/
@@ -35,6 +36,9 @@ struct machine_desc {
 	unsigned char		reserve_lp1 :1;	/* never has lp1	*/
 	unsigned char		reserve_lp2 :1;	/* never has lp2	*/
 	char			restart_mode;	/* default restart mode	*/
+#ifdef CONFIG_SMP
+	struct smp_ops		*smp_ops;	/* SMP operations	*/
+#endif
 	void			(*fixup)(struct tag *, char **,
 					 struct meminfo *);
 	void			(*reserve)(void);/* reserve mem blocks	*/
@@ -49,6 +53,12 @@ struct machine_desc {
 #endif
 	void			(*restart)(char, const char *);
 };
+
+#ifdef CONFIG_SMP
+#define smp_ops(s)		.smp_ops = (&s),
+#else
+#define smp_ops(s)		/* empty */
+#endif
 
 /*
  * Current machine - only accessible during boot.
