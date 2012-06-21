@@ -85,8 +85,8 @@ static int __init init_static_idmap(void)
 		return -ENOMEM;
 
 	/* Add an identity mapping for the physical address of the section. */
-	idmap_start = virt_to_phys((void *)__idmap_text_start);
-	idmap_end = virt_to_phys((void *)__idmap_text_end);
+	idmap_start = virt_to_idmap((void *)__idmap_text_start);
+	idmap_end = virt_to_idmap((void *)__idmap_text_end);
 
 	pr_info("Setting up static identity map for 0x%llx - 0x%llx\n",
 		(long long)idmap_start, (long long)idmap_end);
