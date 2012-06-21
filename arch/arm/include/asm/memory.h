@@ -280,6 +280,15 @@ static inline void *phys_to_virt(phys_addr_t x)
 #define pfn_to_kaddr(pfn)	__va((pfn) << PAGE_SHIFT)
 
 /*
+ * These are for systems that have a hardware interconnect supported alias of
+ * physical memory for idmap purposes.  Most cases should leave these
+ * untouched.
+ */
+#ifndef virt_to_idmap
+#define virt_to_idmap(x) virt_to_phys(x)
+#endif
+
+/*
  * Virtual <-> DMA view memory address translations
  * Again, these are *only* valid on the kernel direct mapped RAM
  * memory.  Use of these is *deprecated* (and that doesn't mean
