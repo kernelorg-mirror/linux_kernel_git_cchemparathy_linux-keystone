@@ -72,10 +72,10 @@ int __cpuinit __cpu_up(unsigned int cpu, struct task_struct *idle)
 	 */
 	secondary_data.stack = task_stack_page(idle) + THREAD_START_SP;
 
-	pgdir = virt_to_phys(idmap_pgd);
+	pgdir = virt_to_idmap(idmap_pgd);
 	secondary_data.pgdir = pgdir >> ARCH_PGD_SHIFT;
 
-	pgdir = virt_to_phys(swapper_pg_dir);
+	pgdir = virt_to_idmap(swapper_pg_dir);
 	secondary_data.swapper_pg_dir = pgdir >> ARCH_PGD_SHIFT;
 
 	__cpuc_flush_dcache_area(&secondary_data, sizeof(secondary_data));
