@@ -498,6 +498,7 @@ void __init tci6614_init(void)
 
 static void __iomem *cpintc_base;
 static bool debug_cpintc;
+#define debug_cpintc_irq(irq)	(false)
 
 #define CPINTC_REVISION			0x000
 #define CPINTC_GLOBAL_ENABLE		0x010
@@ -541,7 +542,7 @@ static void cpintc_mask_irq(struct irq_data *d)
 	unsigned int irq = d->irq;
 
 	irq -= TCI6614_CPINTC_IRQ_BASE;
-	if (debug_cpintc)
+	if (debug_cpintc || debug_cpintc_irq(irq))
 		printk(KERN_NOTICE "cpintc: mask %d\n", irq);
 	cpintc_writel(irq, CPINTC_ENABLE_IDX_CLEAR);
 }
@@ -551,7 +552,7 @@ void cpintc_unmask_irq(struct irq_data *d)
 	unsigned int irq = d->irq;
 
 	irq -= TCI6614_CPINTC_IRQ_BASE;
-	if (debug_cpintc)
+	if (debug_cpintc || debug_cpintc_irq(irq))
 		printk(KERN_NOTICE "cpintc: unmask %d\n", irq);
 	cpintc_writel(irq, CPINTC_ENABLE_IDX_SET);
 }
@@ -561,7 +562,7 @@ void cpintc_ack_irq(struct irq_data *d)
 	unsigned int irq = d->irq;
 
 	irq -= TCI6614_CPINTC_IRQ_BASE;
-	if (debug_cpintc)
+	if (debug_cpintc || debug_cpintc_irq(irq))
 		printk(KERN_NOTICE "cpintc: ack %d\n", irq);
 	cpintc_writel(irq, CPINTC_STATUS_IDX_CLEAR);
 }
@@ -575,7 +576,7 @@ bool cpintc_irq_pending(unsigned int irq)
 			CPINTC_BIT(irq)) ? true : false;
 	pending = (cpintc_readl(CPINTC_STATUS_SET + CPINTC_REG(irq)) &
 			CPINTC_BIT(irq)) ? true : false;
-	if (debug_cpintc) {
+	if (debug_cpintc || debug_cpintc_irq(irq)) {
 		printk(KERN_NOTICE "cpintc: %d %s, %s\n", irq,
 		       pending ? "pending" : "not pending",
 		       enabled ? "enabled" : "not enabled");
