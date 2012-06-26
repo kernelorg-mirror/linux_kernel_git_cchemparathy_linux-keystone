@@ -390,7 +390,10 @@ static int __init davinci_gpio_irq_setup(void)
 
 		/* pass "bank 0" GPIO IRQs to AINTC */
 		chips[0].chip.to_irq = gpio_to_irq_unbanked;
+
 		binten = BIT(0);
+		if (soc_info->gpio_unbanked > 16)
+			binten |= BIT(1);
 
 		/* AINTC handles mask/unmask; GPIO handles triggering */
 		irq = bank_irq;
