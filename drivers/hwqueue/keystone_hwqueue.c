@@ -36,13 +36,32 @@
 #define DESC_SIZE_MASK	0xful
 #define DESC_PTR_MASK	(~DESC_SIZE_MASK)
 
-#define THRESH_GTE	BIT(8)
+#define THRESH_GTE	BIT(7)
 #define THRESH_LT	0
 
 #define PDSP_CTRL_PC_MASK	0xffff0000
 #define PDSP_CTRL_SOFT_RESET	BIT(0)
 #define PDSP_CTRL_ENABLE	BIT(1)
 #define PDSP_CTRL_RUNNING	BIT(15)
+
+#define ACCUM_MAX_CHANNEL		48
+#define ACCUM_DEFAULT_PERIOD		25 /* usecs */
+#define ACCUM_DESCS_MAX			SZ_1K
+#define ACCUM_DESCS_MASK		(ACCUM_DESCS_MAX - 1)
+#define ACCUM_CHANNEL_INT_BASE		2
+
+#define ACCUM_LIST_ENTRY_TYPE		1
+#define ACCUM_LIST_ENTRY_WORDS		(1 << ACCUM_LIST_ENTRY_TYPE)
+#define ACCUM_LIST_ENTRY_QUEUE_IDX	0
+#define ACCUM_LIST_ENTRY_DESC_IDX	(ACCUM_LIST_ENTRY_WORDS - 1)
+
+#define ACCUM_CMD_DISABLE_CHANNEL	0x80
+#define ACCUM_CMD_ENABLE_CHANNEL	0x81
+#define ACCUM_CFG_MULTI_QUEUE		BIT(21)
+
+#define ACCUM_INTD_OFFSET_EOI		(0x0010)
+#define ACCUM_INTD_OFFSET_COUNT(ch)	(0x0300 + 4 * (ch))
+#define ACCUM_INTD_OFFSET_STATUS(ch)	(0x0200 + 4 * ((ch) / 32))
 
 struct khwq_reg_config {
 	u32		revision;
@@ -84,6 +103,18 @@ struct khwq_reg_pdsp_command {
 	u32		timer_config;
 };
 
+enum khwq_acc_result {
+	ACCUM_RET_IDLE,
+	ACCUM_RET_SUCCESS,
+	ACCUM_RET_INVALID_COMMAND,
+	ACCUM_RET_INVALID_CHANNEL,
+	ACCUM_RET_INACTIVE_CHANNEL,
+	ACCUM_RET_ACTIVE_CHANNEL,
+	ACCUM_RET_INVALID_QUEUE,
+
+	ACCUM_RET_INVALID_RET,
+};
+
 struct khwq_region {
 	unsigned	 desc_size;
 	unsigned	 num_desc;
@@ -112,22 +143,50 @@ struct khwq_pdsp_info {
 	const char				*name;
 	struct khwq_reg_pdsp_regs  __iomem	*regs;
 	struct khwq_reg_pdsp_command  __iomem	*command;
+	void __iomem				*intd;
 	u32 __iomem				*iram;
 	const char				*firmware;
+	u32					 id;
 	struct list_head			 list;
+};
+
+struct khwq_acc_info {
+	u32			 pdsp_id;
+	u32			 start_channel;
+	u32			 list_entries;
+	u32			 pacing_mode;
+	u32			 timer_count;
+	int			 mem_size;
+	int			 list_size;
+	struct khwq_pdsp_info	*pdsp;
+};
+
+struct khwq_acc_channel {
+	u32			 channel;
+	u32			 list_index;
+	u32			 open_mask;
+	u32			*list_cpu[2];
+	dma_addr_t		 list_dma[2];
+	char			 name[32];
+	atomic_t		 retrigger_count;
 };
 
 struct khwq_range_info {
 	const char		*name;
+	struct khwq_device	*kdev;
 	unsigned		 queue_base;
 	unsigned		 num_queues;
 	unsigned		 irq_base;
 	unsigned		 flags;
 	struct list_head	 list;
+	struct khwq_acc_info	 acc_info;
+	struct khwq_acc_channel	*acc;
 };
 
 #define RANGE_RESERVED		BIT(0)
 #define RANGE_HAS_IRQ		BIT(1)
+#define RANGE_HAS_ACCUMULATOR	BIT(2)
+#define RANGE_MULTI_QUEUE	BIT(3)
 
 struct khwq_device {
 	struct device			*dev;
@@ -148,7 +207,18 @@ struct khwq_device {
 	void __iomem			*reg_status;
 };
 
+struct khwq_desc {
+	u32			 val;
+	unsigned		 size;
+	struct list_head	 list;
+};
+
 struct khwq_instance {
+	u32			*descs;
+	atomic_t		 desc_head, desc_tail, desc_count;
+	struct khwq_device	*kdev;
+	struct khwq_range_info	*range;
+	struct khwq_acc_channel	*acc;
 	struct khwq_region	*last; /* cache last region used */
 	int			 irq_num; /*irq num -ve for non-irq queues */
 	char			 irq_name[32];
@@ -167,13 +237,17 @@ struct khwq_instance {
 #define for_each_queue_range(kdev, range)			\
 	list_for_each_entry(range, &kdev->queue_ranges, list)
 
+#define first_queue_range(kdev)					\
+	list_first_entry(&kdev->queue_ranges, struct khwq_range_info, list)
+
 #define for_each_pool(kdev, pool)				\
 	list_for_each_entry(pool, &kdev->pools, list)
 
 #define for_each_pdsp(kdev, pdsp)				\
 	list_for_each_entry(pdsp, &kdev->pdsps, list)
 
-static inline int khwq_pdsp_wait(u32 *addr, unsigned timeout, u32 flags)
+static inline int khwq_pdsp_wait(u32 * __iomem addr, unsigned timeout,
+				 u32 flags)
 {
 	unsigned long end_time;
 	u32 val = 0;
@@ -193,37 +267,45 @@ static inline int khwq_pdsp_wait(u32 *addr, unsigned timeout, u32 flags)
 	return ret;
 }
 
-static inline struct khwq_range_info *
-khwq_find_queue_range(struct hwqueue_instance *inst)
+static inline struct khwq_pdsp_info *
+khwq_find_pdsp(struct khwq_device *kdev, unsigned pdsp_id)
 {
-	struct khwq_device *kdev = from_hdev(inst->hdev);
-	unsigned id = hwqueue_inst_to_id(inst);
-	struct khwq_range_info *range;
+	struct khwq_pdsp_info *pdsp;
 
-	for_each_queue_range(kdev, range)
-		if (id >= range->queue_base &&
-		    id < range->queue_base + range->num_queues)
-			return range;
+	for_each_pdsp(kdev, pdsp)
+		if (pdsp_id == pdsp->id)
+			return pdsp;
 	return NULL;
 }
 
 static int khwq_match(struct hwqueue_instance *inst, unsigned flags)
 {
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
 	struct khwq_range_info *range;
 	int score = 0;
 
-	range = khwq_find_queue_range(inst);
+	if (!kq)
+		return -ENOENT;
+
+	range = kq->range;
 	if (!range)
-		return -ENODEV;
+		return -ENOENT;
 
 	if (range->flags & RANGE_RESERVED)
 		score += 1000;
 
+	if ((range->flags & RANGE_HAS_ACCUMULATOR) &&
+	    !(flags & O_HIGHTHROUGHPUT))
+		score += 100;
+	if (!(range->flags & RANGE_HAS_ACCUMULATOR) &&
+	    (flags & O_HIGHTHROUGHPUT))
+		score += 100;
+
 	if ((range->flags & RANGE_HAS_IRQ) &&
-	    !(flags & (O_HIGHTHROUGHPUT | O_LOWLATENCY)))
+	    !(flags & (O_LOWLATENCY | O_HIGHTHROUGHPUT)))
 		score += 100;
 	if (!(range->flags & RANGE_HAS_IRQ) &&
-	    (flags & (O_HIGHTHROUGHPUT | O_LOWLATENCY)))
+	    (flags & (O_LOWLATENCY | O_HIGHTHROUGHPUT)))
 		score += 100;
 
 	return score;
@@ -238,60 +320,436 @@ static irqreturn_t khwq_int_handler(int irq, void *_instdata)
 	return IRQ_HANDLED;
 }
 
-static int khwq_open(struct hwqueue_instance *inst, unsigned flags)
+static void __khwq_acc_notify(struct khwq_range_info *range,
+			      struct khwq_acc_channel *acc)
 {
-	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
-	struct khwq_device *kdev = from_hdev(inst->hdev);
-	unsigned id = hwqueue_inst_to_id(inst);
-	struct khwq_range_info *range;
-	int ret, irq_num = -1;
+	struct khwq_device *kdev = range->kdev;
+	struct hwqueue_device *hdev = to_hdev(kdev);
+	struct hwqueue_instance *inst;
+	int range_base, queue;
 
-	/* setup threshold, status bit is set when queue depth >= 1 */
-	__raw_writel(THRESH_GTE | 1, &kdev->reg_peek[id].ptr_size_thresh);
+	range_base = kdev->base_id + range->queue_base;
 
-	range = khwq_find_queue_range(inst);
-	if (!range)
-		return -ENODEV;
-
-	kq->irq_num = -1;
-
-	if (range->flags & RANGE_HAS_IRQ) {
-		irq_num = id - range->queue_base + range->irq_base;
-
-		scnprintf(kq->irq_name, sizeof(kq->irq_name), "hwqueue-%d", id);
-		ret = request_irq(irq_num, khwq_int_handler, 0, kq->irq_name,
-				  inst);
-		if (ret) {
-			dev_err(kdev->dev,
-				"request_irq failed for queue:%d\n", id);
-			return -EINVAL;
+	if (range->flags & RANGE_MULTI_QUEUE) {
+		for (queue = 0; queue < range->num_queues; queue++) {
+			inst = hwqueue_id_to_inst(hdev, range_base + queue);
+			dev_dbg(kdev->dev, "acc-irq: notifying %d\n",
+				range_base + queue);
+			hwqueue_notify(inst);
 		}
-		/* disable irq at this time */
-		disable_irq(irq_num);
-		kq->irq_num = irq_num;
+	} else {
+		queue = acc->channel - range->acc_info.start_channel;
+		inst = hwqueue_id_to_inst(hdev, range_base + queue);
+		dev_dbg(kdev->dev, "acc-irq: notifying %d\n",
+			range_base + queue);
+		hwqueue_notify(inst);
 	}
-	return 0;
 }
 
-static void khwq_close(struct hwqueue_instance *inst)
+static irqreturn_t khwq_acc_int_handler(int irq, void *_instdata)
 {
-	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
+	struct hwqueue_instance *inst = NULL;
+	struct khwq_acc_channel *acc;
+	struct khwq_instance *kq = NULL;
+	struct khwq_range_info *range;
+	struct hwqueue_device *hdev;
+	struct khwq_pdsp_info *pdsp;
+	struct khwq_acc_info *info;
+	struct khwq_device *kdev;
 
-	if (kq->irq_num >= 0)
-		free_irq(kq->irq_num, inst);
+	u32 *list, *list_cpu, val, idx, notifies;
+	int range_base, channel, queue = 0;
+	dma_addr_t list_dma;
+
+	range = _instdata;
+	info  = &range->acc_info;
+	kdev  = range->kdev;
+	hdev  = to_hdev(kdev);
+	pdsp  = range->acc_info.pdsp;
+	acc   = range->acc;
+
+	range_base = kdev->base_id + range->queue_base;
+
+	if ((range->flags & RANGE_MULTI_QUEUE) == 0) {
+		queue	 = irq - range->irq_base;
+		inst	 = hwqueue_id_to_inst(hdev, range_base + queue);
+		kq	 = hwqueue_inst_to_priv(inst);
+		acc	+= queue;
+	}
+
+	channel = acc->channel;
+	list_dma = acc->list_dma[acc->list_index];
+	list_cpu = acc->list_cpu[acc->list_index];
+
+	dev_dbg(kdev->dev, "acc-irq: channel %d, list %d, virt %p, phys %x\n",
+		channel, acc->list_index, list_cpu, list_dma);
+
+	if (atomic_read(&acc->retrigger_count)) {
+		atomic_dec(&acc->retrigger_count);
+		__khwq_acc_notify(range, acc);
+
+		__raw_writel(1, pdsp->intd + ACCUM_INTD_OFFSET_COUNT(channel));
+
+		/* ack the interrupt */
+		__raw_writel(ACCUM_CHANNEL_INT_BASE + channel,
+			     pdsp->intd + ACCUM_INTD_OFFSET_EOI);
+
+		return IRQ_HANDLED;
+	}
+
+	notifies = __raw_readl(pdsp->intd + ACCUM_INTD_OFFSET_COUNT(channel));
+	WARN_ON(!notifies);
+
+	dma_sync_single_for_cpu(kdev->dev, list_dma, info->list_size, DMA_FROM_DEVICE);
+
+	for (list = list_cpu; list < list_cpu + (info->list_size / sizeof(u32));
+	     list += ACCUM_LIST_ENTRY_WORDS) {
+
+		if (ACCUM_LIST_ENTRY_WORDS == 1) {
+			dev_dbg(kdev->dev, "acc-irq: list %d, entry @%p, "
+				"%08x\n",
+				acc->list_index, list, list[0]);
+		} else if (ACCUM_LIST_ENTRY_WORDS == 2) {
+			dev_dbg(kdev->dev, "acc-irq: list %d, entry @%p, "
+				"%08x %08x\n",
+				acc->list_index, list, list[0], list[1]);
+		} else if (ACCUM_LIST_ENTRY_WORDS == 4) {
+			dev_dbg(kdev->dev, "acc-irq: list %d, entry @%p, "
+				"%08x %08x %08x %08x\n",
+				acc->list_index, list,
+				list[0], list[1], list[2], list[3]);
+		}
+
+		val = list[ACCUM_LIST_ENTRY_DESC_IDX];
+
+		if (!val)
+			break;
+
+		if (range->flags & RANGE_MULTI_QUEUE) {
+			queue = list[ACCUM_LIST_ENTRY_QUEUE_IDX] >> 16;
+			if (queue < range_base || queue >= range_base + range->num_queues) {
+				dev_err(kdev->dev, "bad queue %d, expecting %d-%d\n",
+					queue, range_base, range_base + range->num_queues);
+				break;
+			}
+			queue -= range_base;
+			inst = hwqueue_id_to_inst(hdev, range_base + queue);
+			kq = hwqueue_inst_to_priv(inst);
+		}
+
+		if (atomic_inc_return(&kq->desc_count) >= ACCUM_DESCS_MAX) {
+			atomic_dec(&kq->desc_count);
+			/* TODO: need a statistics counter for such drops */
+			continue;
+		}
+
+		idx = atomic_inc_return(&kq->desc_tail) & ACCUM_DESCS_MASK;
+		kq->descs[idx] = val;
+		dev_dbg(kdev->dev, "acc-irq: enqueue %08x at %d, queue %d\n",
+			val, idx, queue + range_base);
+	}
+
+	__khwq_acc_notify(range, acc);
+
+	memset(list_cpu, 0, info->list_size);
+	dma_sync_single_for_device(kdev->dev, list_dma, info->list_size,
+				   DMA_TO_DEVICE);
+
+	/* flip to the other list */
+	acc->list_index ^= 1;
+
+	/* reset the interrupt counter */
+	__raw_writel(1, pdsp->intd + ACCUM_INTD_OFFSET_COUNT(channel));
+
+	/* ack the interrupt */
+	__raw_writel(ACCUM_CHANNEL_INT_BASE + channel,
+		     pdsp->intd + ACCUM_INTD_OFFSET_EOI);
+
+	return IRQ_HANDLED;
 }
 
 static void khwq_set_notify(struct hwqueue_instance *inst, bool enabled)
 {
-	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
+	struct khwq_range_info *range;
+	struct khwq_instance *kq;
+	struct khwq_device *kdev;
+	u32 mask, offset;
+	unsigned queue;
 
-	if (kq->irq_num >= 0) {
+	kq    = hwqueue_inst_to_priv(inst);
+	range = kq->range;
+	kdev  = range->kdev;
+	queue = hwqueue_inst_to_id(inst) - range->queue_base;
+
+	if (range->flags & RANGE_HAS_ACCUMULATOR) {
+		struct khwq_pdsp_info *pdsp = range->acc_info.pdsp;
+
+		/*
+		 * when enabling, we need to re-trigger an interrupt if we
+		 * have descriptors pending
+		 */
+		if (!enabled || atomic_read(&kq->desc_count) <= 0)
+			return;
+
+		atomic_inc(&kq->acc->retrigger_count);
+		mask = BIT(kq->acc->channel % 32);
+		offset = ACCUM_INTD_OFFSET_STATUS(kq->acc->channel);
+
+		dev_dbg(kdev->dev, "setup-notify: re-triggering irq for %s\n",
+			kq->acc->name);
+		__raw_writel(mask, pdsp->intd + offset);
+
+		return;
+	}
+
+	if (range->flags & RANGE_HAS_IRQ) {
 		if (enabled)
-			enable_irq(kq->irq_num);
+			enable_irq(range->irq_base + queue);
 		else
-			disable_irq_nosync(kq->irq_num);
-	} else
-		hwqueue_set_poll(inst, enabled);
+			disable_irq_nosync(range->irq_base + queue);
+		return;
+	}
+
+	hwqueue_set_poll(inst, enabled);
+}
+
+static int khwq_range_setup_acc_irq(struct khwq_range_info *range, int queue,
+				    bool enabled)
+{
+	struct khwq_device *kdev = range->kdev;
+	struct khwq_acc_channel *acc;
+	int ret = 0, irq;
+	u32 old, new;
+
+	if (range->flags & RANGE_MULTI_QUEUE) {
+		acc = range->acc;
+		irq = range->irq_base;
+	} else {
+		acc = range->acc + queue;
+		irq = range->irq_base + queue;
+	}
+
+	old = acc->open_mask;
+	if (enabled)
+		new = old | BIT(queue);
+	else
+		new = old & ~BIT(queue);
+	acc->open_mask = new;
+
+	dev_dbg(kdev->dev, "setup-acc-irq: open mask old %08x, new %08x, channel %s\n",
+		old, new, acc->name);
+
+	if (likely(new == old))
+		return 0;
+
+	if (new && !old) {
+		dev_dbg(kdev->dev, "setup-acc-irq: requesting %s for channel %s\n",
+			acc->name, acc->name);
+		ret = request_irq(irq, khwq_acc_int_handler, 0, acc->name,
+				  range);
+	}
+
+	if (old && !new) {
+		dev_dbg(kdev->dev, "setup-acc-irq: freeing %s for channel %s\n",
+			acc->name, acc->name);
+		free_irq(irq, range);
+	}
+
+	return ret;
+}
+
+static int khwq_setup_irq(struct hwqueue_instance *inst)
+{
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
+	struct khwq_range_info *range = kq->range;
+	unsigned queue = hwqueue_inst_to_id(inst) - range->queue_base;
+	int ret, irq;
+
+	if ((range->flags & RANGE_HAS_IRQ) == 0)
+		return 0;
+
+	if (range->flags & RANGE_HAS_ACCUMULATOR)
+		return khwq_range_setup_acc_irq(range, queue, true);
+
+	irq = range->irq_base + queue;
+
+	ret = request_irq(irq, khwq_int_handler, 0, kq->irq_name, inst);
+	if (ret >= 0)
+		disable_irq(irq);
+
+	return ret;
+}
+
+static void khwq_free_irq(struct hwqueue_instance *inst)
+{
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
+	struct khwq_range_info *range = kq->range;
+	unsigned id = hwqueue_inst_to_id(inst) - range->queue_base;
+	int irq;
+
+	if ((range->flags & RANGE_HAS_IRQ) == 0)
+		return;
+
+	if (range->flags & RANGE_HAS_ACCUMULATOR) {
+		khwq_range_setup_acc_irq(range, id, false);
+		return;
+	}
+
+	irq = range->irq_base + id;
+	free_irq(irq, inst);
+}
+
+static int khwq_open(struct hwqueue_instance *inst, unsigned flags)
+{
+	return khwq_setup_irq(inst);
+}
+
+static void khwq_close(struct hwqueue_instance *inst)
+{
+	khwq_free_irq(inst);
+}
+
+static const char *khwq_acc_result_str(enum khwq_acc_result result)
+{
+	static const char *result_str[] = {
+		[ACCUM_RET_IDLE]		= "idle",
+		[ACCUM_RET_SUCCESS]		= "success",
+		[ACCUM_RET_INVALID_COMMAND]	= "invalid command",
+		[ACCUM_RET_INVALID_CHANNEL]	= "invalid channel",
+		[ACCUM_RET_INACTIVE_CHANNEL]	= "inactive channel",
+		[ACCUM_RET_ACTIVE_CHANNEL]	= "active channel",
+		[ACCUM_RET_INVALID_QUEUE]	= "invalid queue",
+
+		[ACCUM_RET_INVALID_RET]		= "invalid return code",
+	};
+
+	if (result >= ARRAY_SIZE(result_str))
+		return result_str[ACCUM_RET_INVALID_RET];
+	else
+		return result_str[result];
+}
+
+static enum khwq_acc_result
+khwq_acc_write(struct khwq_device *kdev, struct khwq_pdsp_info *pdsp,
+	       struct khwq_reg_pdsp_command *cmd)
+{
+	u32 result;
+
+	/* TODO: acquire hwspinlock here */
+
+	dev_dbg(kdev->dev, "acc command %08x %08x %08x %08x %08x\n",
+		cmd->command, cmd->queue_mask, cmd->list_phys,
+		cmd->queue_num, cmd->timer_config);
+
+	__raw_writel(cmd->timer_config,	&pdsp->command->timer_config);
+	__raw_writel(cmd->queue_num,	&pdsp->command->queue_num);
+	__raw_writel(cmd->list_phys,	&pdsp->command->list_phys);
+	__raw_writel(cmd->queue_mask,	&pdsp->command->queue_mask);
+	__raw_writel(cmd->command,	&pdsp->command->command);
+
+	/* wait for the command to clear */
+	do {
+		result = __raw_readl(&pdsp->command->command);
+	} while ((result >> 8) & 0xff);
+
+	/* TODO: release hwspinlock here */
+
+	return (result >> 24) & 0xff;
+}
+
+static void khwq_acc_setup_cmd(struct khwq_device *kdev,
+			       struct khwq_range_info *range,
+			       struct khwq_reg_pdsp_command *cmd,
+			       int queue)
+{
+	struct khwq_acc_info *info = &range->acc_info;
+	struct khwq_acc_channel *acc;
+	int queue_base;
+	u32 queue_mask;
+
+	if (range->flags & RANGE_MULTI_QUEUE) {
+		acc = range->acc;
+		queue_base = range->queue_base;
+		queue_mask = BIT(range->num_queues) - 1;
+	} else {
+		acc = range->acc + queue;
+		queue_base = range->queue_base + queue;
+		queue_mask = 0;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->command    = acc->channel;
+	cmd->queue_mask = queue_mask;
+	cmd->list_phys  = acc->list_dma[0];
+	cmd->queue_num  = info->list_entries << 16;
+	cmd->queue_num |= queue_base;
+
+	cmd->timer_config = ACCUM_LIST_ENTRY_TYPE << 18;
+	if (range->flags & RANGE_MULTI_QUEUE)
+		cmd->timer_config |= ACCUM_CFG_MULTI_QUEUE;
+	cmd->timer_config |= info->pacing_mode << 16;
+	cmd->timer_config |= info->timer_count;
+}
+
+static void khwq_acc_stop(struct khwq_device *kdev,
+			  struct khwq_range_info *range,
+			  int queue)
+{
+	struct khwq_reg_pdsp_command cmd;
+	struct khwq_acc_channel *acc;
+	enum khwq_acc_result result;
+
+	acc = range->acc + queue;
+
+	khwq_acc_setup_cmd(kdev, range, &cmd, queue);
+	cmd.command |= ACCUM_CMD_DISABLE_CHANNEL << 8;
+	result = khwq_acc_write(kdev, range->acc_info.pdsp, &cmd);
+
+	dev_dbg(kdev->dev, "stopped acc channel %s, result %s\n",
+		 acc->name, khwq_acc_result_str(result));
+}
+
+static enum khwq_acc_result khwq_acc_start(struct khwq_device *kdev,
+					   struct khwq_range_info *range,
+					   int queue)
+{
+	struct khwq_reg_pdsp_command cmd;
+	struct khwq_acc_channel *acc;
+	enum khwq_acc_result result;
+
+	acc = range->acc + queue;
+
+	khwq_acc_setup_cmd(kdev, range, &cmd, queue);
+	cmd.command |= ACCUM_CMD_ENABLE_CHANNEL << 8;
+	result = khwq_acc_write(kdev, range->acc_info.pdsp, &cmd);
+
+	dev_dbg(kdev->dev, "started acc channel %s, result %s\n",
+		 acc->name, khwq_acc_result_str(result));
+
+	return result;
+}
+
+static int khwq_acc_init(struct khwq_device *kdev,
+			 struct khwq_range_info *range)
+{
+	struct khwq_acc_channel *acc;
+	enum khwq_acc_result result;
+	int queue;
+
+	for (queue = 0; queue < range->num_queues; queue++) {
+		acc = range->acc + queue;
+
+		khwq_acc_stop(kdev, range, queue);
+		acc->list_index = 0;
+		result = khwq_acc_start(kdev, range, queue);
+
+		if (result != ACCUM_RET_SUCCESS)
+			return -EIO;
+
+		if (range->flags & RANGE_MULTI_QUEUE)
+			return 0;
+	}
+	return 0;
 }
 
 static inline struct khwq_region *
@@ -335,7 +793,7 @@ khwq_find_region_by_dma(struct khwq_device *kdev, struct khwq_instance *kq,
 }
 
 static int khwq_push(struct hwqueue_instance *inst, dma_addr_t dma,
-		unsigned size)
+		     unsigned size)
 {
 	struct khwq_device *kdev = from_hdev(inst->hdev);
 	unsigned id = hwqueue_inst_to_id(inst);
@@ -350,14 +808,32 @@ static int khwq_push(struct hwqueue_instance *inst, dma_addr_t dma,
 
 static dma_addr_t khwq_pop(struct hwqueue_instance *inst, unsigned *size)
 {
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
 	struct khwq_device *kdev = from_hdev(inst->hdev);
 	unsigned id = hwqueue_inst_to_id(inst);
-	u32 val, desc_size;
+	u32 val, desc_size, idx;
 	dma_addr_t dma;
 
-	val = __raw_readl(&kdev->reg_pop[id].ptr_size_thresh);
-	if (unlikely(!val))
-		return 0;
+	/* are we accumulated? */
+	if (kq->descs) {
+		if (unlikely(atomic_dec_return(&kq->desc_count) < 0)) {
+			atomic_inc(&kq->desc_count);
+			dev_dbg(kdev->dev, "acc-pop empty queue %d\n", id);
+			return 0;
+		}
+
+		idx  = atomic_inc_return(&kq->desc_head);
+		idx &= ACCUM_DESCS_MASK;
+
+		val = kq->descs[idx];
+
+		dev_dbg(kdev->dev, "acc-pop %08x (at %d) from queue %d\n",
+			val, idx, id);
+	} else {
+		val = __raw_readl(&kdev->reg_pop[id].ptr_size_thresh);
+		if (unlikely(!val))
+			return 0;
+	}
 
 	dma = val & DESC_PTR_MASK;
 	desc_size = ((val & DESC_SIZE_MASK) + 1) * 16;
@@ -371,22 +847,34 @@ static dma_addr_t khwq_pop(struct hwqueue_instance *inst, unsigned *size)
 static int khwq_get_count(struct hwqueue_instance *inst)
 {
 	struct khwq_device *kdev = from_hdev(inst->hdev);
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
+	struct khwq_range_info *range = kq->range;
 	unsigned id = hwqueue_inst_to_id(inst);
+	int count;
 
-	return __raw_readl(&kdev->reg_peek[id].entry_count);
+	if (range->flags & RANGE_HAS_ACCUMULATOR) {
+		count = atomic_read(&kq->desc_count);
+		dev_dbg(kdev->dev, "count %d [acc]\n", count);
+	} else {
+		count = __raw_readl(&kdev->reg_peek[id].entry_count);
+		dev_dbg(kdev->dev, "count %d\n", count);
+	}
+	return count;
 }
 
 static int khwq_flush(struct hwqueue_instance *inst)
 {
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
 	struct khwq_device *kdev = from_hdev(inst->hdev);
 	unsigned id = hwqueue_inst_to_id(inst);
 
+	atomic_set(&kq->desc_count, 0);
 	__raw_writel(0, &kdev->reg_push[id].ptr_size_thresh);
 	return 0;
 }
 
 static int khwq_map(struct hwqueue_instance *inst, void *data, unsigned size,
-		dma_addr_t *dma_ptr, unsigned *size_ptr)
+		    dma_addr_t *dma_ptr, unsigned *size_ptr)
 {
 	struct khwq_device *kdev = from_hdev(inst->hdev);
 	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
@@ -412,7 +900,7 @@ static int khwq_map(struct hwqueue_instance *inst, void *data, unsigned size,
 }
 
 static void *khwq_unmap(struct hwqueue_instance *inst, dma_addr_t dma,
-		unsigned desc_size)
+			unsigned desc_size)
 {
 	struct khwq_device *kdev = from_hdev(inst->hdev);
 	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
@@ -556,7 +1044,7 @@ static int __devinit khwq_setup_region(struct khwq_device *kdev,
 	region->link_index = start_index;
 
 	size = region->num_desc * region->desc_size;
-	region->virt_start = alloc_pages_exact(size, GFP_KERNEL);
+	region->virt_start = alloc_pages_exact(size, GFP_KERNEL | GFP_DMA);
 	if (!region->virt_start) {
 		region->num_desc = 0;
 		return 0;
@@ -600,11 +1088,11 @@ static int __devinit khwq_setup_regions(struct khwq_device *kdev)
 
 	khwq_map_pools(kdev);
 
-	 /* Next, we run through the regions and set things up */
+	/* Next, we run through the regions and set things up */
 	for_each_region(kdev, region) {
 		link_index += khwq_setup_region(kdev, region,
-					kdev->start_index + link_index,
-					kdev->num_index - link_index);
+						kdev->start_index + link_index,
+						kdev->num_index - link_index);
 	}
 
 	return 0;
@@ -645,10 +1133,10 @@ static void __devinit khwq_setup_pools(struct khwq_device *kdev)
 
 			desc = region->virt_start + region->desc_size * index;
 			ret = hwqueue_map(pool->queue, desc, pool->desc_size,
-					&dma_addr, &dma_size);
+					  &dma_addr, &dma_size);
 			if (ret < 0) {
 				WARN_ONCE(ret, "failed map pool queue %s\n",
-				  pool->name);
+					  pool->name);
 				continue;
 			}
 			ret = hwqueue_push(pool->queue, dma_addr, dma_size);
@@ -692,8 +1180,8 @@ static int __devinit khwq_get_link_ram(struct khwq_device *kdev,
 			block->size = temp[1];
 			/* queue_base not specific => allocate requested size */
 			block->virt = dmam_alloc_coherent(kdev->dev,
-					8 * block->size, &block->phys,
-					GFP_KERNEL);
+							  8 * block->size, &block->phys,
+							  GFP_KERNEL);
 			if (!block->virt) {
 				dev_err(kdev->dev, "failed to alloc linkram\n");
 				return -ENOMEM;
@@ -735,59 +1223,243 @@ static const char *khwq_find_name(struct device_node *node)
 	return name;
 }
 
-static int khwq_init_queue_ranges(struct khwq_device *kdev,
-				  struct device_node *queues)
+static int khwq_init_acc_range(struct khwq_device *kdev,
+			       struct device_node *node,
+			       struct khwq_range_info *range)
 {
-	struct device *dev = kdev->dev;
-	struct khwq_range_info *range;
-	struct device_node *child;
-	u32 temp[2];
-	int ret;
+	struct khwq_acc_channel *acc;
+	struct khwq_pdsp_info *pdsp;
+	struct khwq_acc_info *info;
+	int ret, channel, channels;
+	int list_size, mem_size;
+	dma_addr_t list_dma;
+	void *list_mem;
+	u32 config[5];
 
-	for_each_child_of_node(queues, child) {
+	range->flags |= RANGE_HAS_ACCUMULATOR;
+	info = &range->acc_info;
 
-		range = devm_kzalloc(dev, sizeof(*range), GFP_KERNEL);
-		if (!range) {
-			dev_err(dev, "out of memory allocating range\n");
+	ret = of_property_read_u32_array(node, "accumulator", config, 5);
+	if (ret)
+		return ret;
+
+	info->pdsp_id		= config[0];
+	info->start_channel	= config[1];
+	info->list_entries	= config[2];
+	info->pacing_mode	= config[3];
+	info->timer_count	= config[4] / ACCUM_DEFAULT_PERIOD;
+
+	if (info->start_channel > ACCUM_MAX_CHANNEL) {
+		dev_err(kdev->dev, "channel %d invalid for range %s\n",
+			info->start_channel, range->name);
+		return -EINVAL;
+	}
+
+	if (info->pacing_mode > 3) {
+		dev_err(kdev->dev, "pacing mode %d invalid for range %s\n",
+			info->pacing_mode, range->name);
+		return -EINVAL;
+	}
+
+	pdsp = khwq_find_pdsp(kdev, info->pdsp_id);
+	if (!pdsp) {
+		dev_err(kdev->dev, "pdsp id %d not found for range %s\n",
+			info->pdsp_id, range->name);
+		return -EINVAL;
+	}
+	info->pdsp = pdsp;
+
+	channels = range->num_queues;
+
+	if (of_get_property(node, "multi-queue", NULL)) {
+		range->flags |= RANGE_MULTI_QUEUE;
+		channels = 1;
+		if (range->queue_base & (32 - 1)) {
+			dev_err(kdev->dev,
+				"misaligned multi-queue accumulator range %s\n",
+				range->name);
+			return -EINVAL;
+		}
+		if (range->num_queues > 32) {
+			dev_err(kdev->dev,
+				"too many queues in accumulator range %s\n",
+				range->name);
+			return -EINVAL;
+		}
+	}
+
+	/* figure out list size */
+	list_size  = info->list_entries;
+	list_size *= ACCUM_LIST_ENTRY_WORDS * sizeof(u32);
+	info->list_size = list_size;
+
+	mem_size   = PAGE_ALIGN(list_size * 2);
+	info->mem_size  = mem_size;
+
+	range->acc = kzalloc(channels * sizeof(*range->acc), GFP_KERNEL);
+	if (!range->acc)
+		return -ENOMEM;
+
+	for (channel = 0; channel < channels; channel++) {
+		acc = range->acc + channel;
+		acc->channel = info->start_channel + channel;
+
+		/* allocate memory for the two lists */
+		list_mem = alloc_pages_exact(mem_size, GFP_KERNEL | GFP_DMA);
+		if (!list_mem)
+			return -ENOMEM;
+
+		list_dma = dma_map_single(kdev->dev, list_mem, mem_size,
+					  DMA_BIDIRECTIONAL);
+		if (dma_mapping_error(kdev->dev, list_dma)) {
+			free_pages_exact(list_mem, mem_size);
 			return -ENOMEM;
 		}
 
-		range->name = khwq_find_name(child);
+		memset(list_mem, 0, mem_size);
+		dma_sync_single_for_device(kdev->dev, list_dma, mem_size, DMA_TO_DEVICE);
 
-		ret = of_property_read_u32_array(child, "values", temp, 2);
-		if (!ret) {
-			range->queue_base = temp[0] - kdev->base_id;
-			range->num_queues = temp[1];
-		} else {
-			dev_err(dev, "invalid queue range %s\n", range->name);
-			devm_kfree(dev, range);
-			continue;
-		}
+		scnprintf(acc->name, sizeof(acc->name), "hwqueue-acc-%d", acc->channel);
 
-		ret = of_property_read_u32(child, "irq-base", &range->irq_base);
-		if (ret >= 0)
-			range->flags |= RANGE_HAS_IRQ;
+		acc->list_cpu[0] = list_mem;
+		acc->list_cpu[1] = list_mem + list_size;
+		acc->list_dma[0] = list_dma;
+		acc->list_dma[1] = list_dma + list_size;
 
-		if (of_get_property(child, "reserved", NULL))
-			range->flags |= RANGE_RESERVED;
-
-		list_add_tail(&range->list, &kdev->queue_ranges);
-
-		dev_dbg(dev, "added range %s: %d-%d, irqs %d-%d%s%s\n",
-			range->name, range->queue_base,
-			range->queue_base + range->num_queues - 1,
-			range->irq_base,
-			range->irq_base + range->num_queues - 1,
-			(range->flags & RANGE_HAS_IRQ) ? ", has irq" : "",
-			(range->flags & RANGE_RESERVED) ? ", reserved" : "");
+		dev_dbg(kdev->dev, "%s: channel %d, phys %08x, virt %8p\n",
+			 acc->name, acc->channel, list_dma, list_mem);
 	}
 
+	return 0;
+}
+
+static void khwq_free_acc_range(struct khwq_device *kdev,
+				struct khwq_range_info *range)
+{
+	struct khwq_acc_channel *acc;
+	struct khwq_acc_info *info;
+	int channel, channels;
+
+	info = &range->acc_info;
+
+	if (range->flags & RANGE_MULTI_QUEUE)
+		channels = 1;
+	else
+		channels = range->num_queues;
+
+	for (channel = 0; channel < channels; channel++) {
+		acc = range->acc + channel;
+		if (!acc->list_cpu[0])
+			continue;
+		dma_unmap_single(kdev->dev, acc->list_dma[0],
+				 info->mem_size, DMA_BIDIRECTIONAL);
+		free_pages_exact(acc->list_cpu[0], info->mem_size);
+	}
+	kfree(range->acc);
+}
+
+static int khwq_init_queue_range(struct khwq_device *kdev,
+				 struct device_node *node)
+{
+	struct device *dev = kdev->dev;
+	struct khwq_range_info *range;
+	int id, ret;
+	u32 temp[2];
+
+	range = devm_kzalloc(dev, sizeof(*range), GFP_KERNEL);
+	if (!range) {
+		dev_err(dev, "out of memory allocating range\n");
+		return -ENOMEM;
+	}
+
+	range->kdev = kdev;
+	range->name = khwq_find_name(node);
+
+	ret = of_property_read_u32_array(node, "values", temp, 2);
+	if (!ret) {
+		range->queue_base = temp[0] - kdev->base_id;
+		range->num_queues = temp[1];
+	} else {
+		dev_err(dev, "invalid queue range %s\n", range->name);
+		devm_kfree(dev, range);
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(node, "irq-base", &range->irq_base);
+	if (ret >= 0)
+		range->flags |= RANGE_HAS_IRQ;
+
+	if (of_get_property(node, "reserved", NULL))
+		range->flags |= RANGE_RESERVED;
+
+	if (of_get_property(node, "accumulator", NULL)) {
+		ret = khwq_init_acc_range(kdev, node, range);
+		if (ret < 0) {
+			devm_kfree(dev, range);
+			return ret;
+		}
+	}
+
+	/* set threshold to 1, and flush out the queues */
+	for (id = range->queue_base;
+	     id < range->queue_base + range->num_queues; id++) {
+		__raw_writel(THRESH_GTE | 1, &kdev->reg_peek[id].ptr_size_thresh);
+		__raw_writel(0, &kdev->reg_push[id].ptr_size_thresh);
+	}
+
+	list_add_tail(&range->list, &kdev->queue_ranges);
+
+	dev_dbg(dev, "added range %s: %d-%d, irqs %d-%d%s%s%s\n",
+		range->name, range->queue_base,
+		range->queue_base + range->num_queues - 1,
+		range->irq_base,
+		range->irq_base + range->num_queues - 1,
+		(range->flags & RANGE_HAS_IRQ) ? ", has irq" : "",
+		(range->flags & RANGE_RESERVED) ? ", reserved" : "",
+		(range->flags & RANGE_HAS_ACCUMULATOR) ? ", acc" : "");
+
+	return 0;
+}
+
+static void khwq_free_queue_range(struct khwq_device *kdev,
+				  struct khwq_range_info *range)
+{
+	if (range->flags & RANGE_HAS_ACCUMULATOR)
+		khwq_free_acc_range(kdev, range);
+	list_del(&range->list);
+	devm_kfree(kdev->dev, range);
+}
+
+static int khwq_init_queue_ranges(struct khwq_device *kdev,
+				  struct device_node *queues)
+{
+	struct device_node *child;
+	int ret;
+
+	for_each_child_of_node(queues, child) {
+		ret = khwq_init_queue_range(kdev, child);
+		/* return value ignored, we init the rest... */
+	}
+
+	/* ... and barf if they all failed! */
 	if (list_empty(&kdev->queue_ranges)) {
-		dev_err(dev, "no valid queue range found\n");
+		dev_err(kdev->dev, "no valid queue range found\n");
 		return -ENODEV;
 	}
 
 	return 0;
+}
+
+static void khwq_free_queue_ranges(struct khwq_device *kdev)
+{
+	struct khwq_range_info *range;
+
+	for (;;) {
+		range = first_queue_range(kdev);
+		if (!range)
+			break;
+		khwq_free_queue_range(kdev, range);
+	}
 }
 
 static int khwq_init_pools(struct khwq_device *kdev, struct device_node *pools)
@@ -858,12 +1530,13 @@ static int khwq_init_pdsps(struct khwq_device *kdev, struct device_node *pdsps)
 			continue;
 		}
 		dev_dbg(dev, "pdsp name %s fw name :%s\n",
-		       pdsp->name, pdsp->firmware);
+			pdsp->name, pdsp->firmware);
 
 		pdsp->iram	= of_iomap(child, 0);
 		pdsp->regs	= of_iomap(child, 1);
-		pdsp->command	= of_iomap(child, 2);
-		if (!pdsp->command || !pdsp->iram || !pdsp->regs) {
+		pdsp->intd	= of_iomap(child, 2);
+		pdsp->command	= of_iomap(child, 3);
+		if (!pdsp->command || !pdsp->iram || !pdsp->regs || !pdsp->intd) {
 			dev_err(dev, "failed to map pdsp %s regs\n",
 				pdsp->name);
 			if (pdsp->command)
@@ -872,16 +1545,19 @@ static int khwq_init_pdsps(struct khwq_device *kdev, struct device_node *pdsps)
 				devm_iounmap(dev, pdsp->iram);
 			if (pdsp->regs)
 				devm_iounmap(dev, pdsp->regs);
+			if (pdsp->intd)
+				devm_iounmap(dev, pdsp->intd);
 			kfree(pdsp);
 			continue;
 		}
+		of_property_read_u32(child, "id", &pdsp->id);
 
 		list_add_tail(&pdsp->list, &kdev->pdsps);
 
 		dev_dbg(dev, "added pdsp %s: command %p, iram %p, "
-			 "regs %p, firmware %s\n",
-			 pdsp->name, pdsp->command, pdsp->iram, pdsp->regs,
-			 pdsp->firmware);
+			"regs %p, intd %p, firmware %s\n",
+			pdsp->name, pdsp->command, pdsp->iram, pdsp->regs,
+			pdsp->intd, pdsp->firmware);
 	}
 
 	return 0;
@@ -963,14 +1639,21 @@ static int khwq_start_pdsp(struct khwq_device *kdev,
 	return 0;
 }
 
+static void khwq_stop_pdsps(struct khwq_device *kdev)
+{
+	struct khwq_pdsp_info *pdsp;
+
+	/* disable all pdsps */
+	for_each_pdsp(kdev, pdsp)
+		khwq_stop_pdsp(kdev, pdsp);
+}
+
 static int khwq_start_pdsps(struct khwq_device *kdev)
 {
 	struct khwq_pdsp_info *pdsp;
 	int ret;
 
-	/* disable all pdsps */
-	for_each_pdsp(kdev, pdsp)
-		khwq_stop_pdsp(kdev, pdsp);
+	khwq_stop_pdsps(kdev);
 
 	/* now load them all */
 	for_each_pdsp(kdev, pdsp) {
@@ -984,6 +1667,66 @@ static int khwq_start_pdsps(struct khwq_device *kdev)
 		WARN_ON(ret);
 	}
 
+	return 0;
+}
+
+static int khwq_init_accs(struct khwq_device *kdev)
+{
+	struct khwq_range_info *range;
+	int ret;
+
+	for_each_queue_range(kdev, range) {
+		if (!(range->flags & RANGE_HAS_ACCUMULATOR))
+			continue;
+		ret = khwq_acc_init(kdev, range);
+		if (ret < 0)
+			return ret;
+	}
+	return 0;
+}
+
+static int khwq_init_queue(struct khwq_device *kdev,
+			   struct khwq_range_info *range,
+			   struct hwqueue_instance *inst)
+{
+	struct khwq_instance *kq = hwqueue_inst_to_priv(inst);
+	unsigned id = hwqueue_inst_to_id(inst) - range->queue_base;
+
+	kq->kdev = kdev;
+	kq->range = range;
+	kq->irq_num = -1;
+
+	scnprintf(kq->irq_name, sizeof(kq->irq_name),
+		  "hwqueue-%d", range->queue_base + id);
+
+	if (range->flags & RANGE_HAS_ACCUMULATOR) {
+		kq->descs = kzalloc(ACCUM_DESCS_MAX * sizeof(u32), GFP_KERNEL);
+		if (!kq->descs)
+			return -ENOMEM;
+
+		kq->acc = range->acc;
+		if ((range->flags & RANGE_MULTI_QUEUE) == 0)
+			kq->acc += id;
+	}
+
+	return 0;
+}
+
+static int khwq_init_queues(struct khwq_device *kdev)
+{
+	struct hwqueue_device *hdev = to_hdev(kdev);
+	struct khwq_range_info *range;
+	int id, ret;
+
+	for_each_queue_range(kdev, range) {
+		for (id = range->queue_base;
+		     id < range->queue_base + range->num_queues; id++) {
+			ret = khwq_init_queue(kdev, range,
+					      hwqueue_id_to_inst(hdev, id));
+			if (ret < 0)
+				return ret;
+		}
+	}
 	return 0;
 }
 
@@ -1038,10 +1781,10 @@ static int __devinit khwq_probe(struct platform_device *pdev)
 	kdev->base_id    = temp[0];
 	kdev->num_queues = temp[1];
 
-	/* get usable queue range values from device tree */
-	ret = khwq_init_queue_ranges(kdev, queues);
-	if (ret)
-		return ret;
+	/*
+	 * TODO: failure handling in this code is somewhere between moronic
+	 * and non-existant - needs to be fixed
+	 */
 
 	/* get pdsp configuration values from device tree */
 	if (pdsps) {
@@ -1053,11 +1796,6 @@ static int __devinit khwq_probe(struct platform_device *pdev)
 		if (ret)
 			return ret;
 	}
-
-	/* Get descriptor pool values from device tree */
-	ret = khwq_init_pools(kdev, descs);
-	if (ret)
-		return ret;
 
 	kdev->reg_peek		= of_devm_iomap(dev, 0);
 	kdev->reg_status	= of_devm_iomap(dev, 1);
@@ -1077,6 +1815,19 @@ static int __devinit khwq_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	/* get usable queue range values from device tree */
+	ret = khwq_init_queue_ranges(kdev, queues);
+	if (ret)
+		return ret;
+
+	/* Get descriptor pool values from device tree */
+	ret = khwq_init_pools(kdev, descs);
+	if (ret) {
+		khwq_free_queue_ranges(kdev);
+		khwq_stop_pdsps(kdev);
+		return ret;
+	}
+
 	if (!of_property_read_u32_array(node, "regions", temp, 2)) {
 		kdev->start_region = temp[0];
 		kdev->num_regions = temp[1];
@@ -1084,7 +1835,7 @@ static int __devinit khwq_probe(struct platform_device *pdev)
 
 	BUG_ON(!kdev->num_regions);
 	dev_dbg(kdev->dev, "regions: %d-%d\n", kdev->start_region,
-		 kdev->start_region + kdev->num_regions - 1);
+		kdev->start_region + kdev->num_regions - 1);
 
 	if (!of_property_read_u32_array(node, "link-index", temp, 2)) {
 		kdev->start_index = temp[0];
@@ -1117,6 +1868,13 @@ static int __devinit khwq_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	ret = khwq_init_accs(kdev);
+	if (ret) {
+		khwq_free_queue_ranges(kdev);
+		khwq_stop_pdsps(kdev);
+		return ret;
+	}
+
 	/* initialize hwqueue device data */
 	hdev = to_hdev(kdev);
 	hdev->dev	 = dev;
@@ -1129,6 +1887,12 @@ static int __devinit khwq_probe(struct platform_device *pdev)
 	ret = hwqueue_device_register(hdev);
 	if (ret < 0) {
 		dev_err(dev, "hwqueue registration failed\n");
+		return ret;
+	}
+
+	ret = khwq_init_queues(kdev);
+	if (ret < 0) {
+		dev_err(dev, "hwqueue initialization failed\n");
 		return ret;
 	}
 
