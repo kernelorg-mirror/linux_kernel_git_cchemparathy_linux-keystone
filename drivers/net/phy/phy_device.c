@@ -397,6 +397,7 @@ EXPORT_SYMBOL(phy_find_first);
  * phy_prepare_link - prepares the PHY layer to monitor link status
  * @phydev: target phy_device struct
  * @handler: callback function for link status change notifications
+ * @context: context information for callback handler
  *
  * Description: Tells the PHY infrastructure to handle the
  *   gory details on monitoring link status (whether through
@@ -406,9 +407,11 @@ EXPORT_SYMBOL(phy_find_first);
  *   this function.
  */
 static void phy_prepare_link(struct phy_device *phydev,
-		void (*handler)(struct net_device *))
+		void (*handler)(struct net_device *, void *context),
+		void *context)
 {
 	phydev->adjust_link = handler;
+	phydev->context = context;
 }
 
 /**
@@ -418,10 +421,11 @@ static void phy_prepare_link(struct phy_device *phydev,
  * @handler: callback function for state change notifications
  * @flags: PHY device's dev_flags
  * @interface: PHY device's interface
+ * @context: context information for callback handler
  */
 int phy_connect_direct(struct net_device *dev, struct phy_device *phydev,
-		       void (*handler)(struct net_device *), u32 flags,
-		       phy_interface_t interface)
+		       void (*handler)(struct net_device *, void *context),
+		       u32 flags, phy_interface_t interface, void *context)
 {
 	int rc;
 
@@ -429,7 +433,7 @@ int phy_connect_direct(struct net_device *dev, struct phy_device *phydev,
 	if (rc)
 		return rc;
 
-	phy_prepare_link(phydev, handler);
+	phy_prepare_link(phydev, handler, context);
 	phy_start_machine(phydev, NULL);
 	if (phydev->irq > 0)
 		phy_start_interrupts(phydev);
@@ -445,6 +449,7 @@ EXPORT_SYMBOL(phy_connect_direct);
  * @handler: callback function for state change notifications
  * @flags: PHY device's dev_flags
  * @interface: PHY device's interface
+ * @context: context information for callback handler
  *
  * Description: Convenience function for connecting ethernet
  *   devices to PHY devices.  The default behavior is for
@@ -454,9 +459,10 @@ EXPORT_SYMBOL(phy_connect_direct);
  *   choose to call only the subset of functions which provide
  *   the desired functionality.
  */
-struct phy_device * phy_connect(struct net_device *dev, const char *bus_id,
-		void (*handler)(struct net_device *), u32 flags,
-		phy_interface_t interface)
+struct phy_device *
+phy_connect(struct net_device *dev, const char *bus_id,
+	    void (*handler)(struct net_device *, void *context),
+	    u32 flags, phy_interface_t interface, void *context)
 {
 	struct phy_device *phydev;
 	struct device *d;
@@ -471,7 +477,8 @@ struct phy_device * phy_connect(struct net_device *dev, const char *bus_id,
 	}
 	phydev = to_phy_device(d);
 
-	rc = phy_connect_direct(dev, phydev, handler, flags, interface);
+	rc = phy_connect_direct(dev, phydev, handler, flags, interface,
+				context);
 	if (rc)
 		return ERR_PTR(rc);
 
