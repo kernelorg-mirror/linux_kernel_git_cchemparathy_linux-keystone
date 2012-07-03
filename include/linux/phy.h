@@ -274,6 +274,7 @@ struct phy_c45_device_ids {
  * changes in the link state.
  * adjust_state: Callback for the enet driver to respond to
  * changes in the state machine.
+ * context: Context information for adjust_link and adjust_state callbacks
  *
  * speed, duplex, pause, supported, advertising, and
  * autoneg are used like in mii_if_info
@@ -351,9 +352,11 @@ struct phy_device {
 
 	struct net_device *attached_dev;
 
-	void (*adjust_link)(struct net_device *dev);
+	void (*adjust_link)(struct net_device *dev, void *context);
 
-	void (*adjust_state)(struct net_device *dev);
+	void (*adjust_state)(struct net_device *dev, void *context);
+
+	void *context;
 };
 #define to_phy_device(d) container_of(d, struct phy_device, dev)
 
@@ -509,11 +512,12 @@ struct phy_device * phy_attach(struct net_device *dev,
 		const char *bus_id, u32 flags, phy_interface_t interface);
 struct phy_device *phy_find_first(struct mii_bus *bus);
 int phy_connect_direct(struct net_device *dev, struct phy_device *phydev,
-		void (*handler)(struct net_device *), u32 flags,
-		phy_interface_t interface);
-struct phy_device * phy_connect(struct net_device *dev, const char *bus_id,
-		void (*handler)(struct net_device *), u32 flags,
-		phy_interface_t interface);
+		       void (*handler)(struct net_device *, void *context),
+		       u32 flags, phy_interface_t interface, void *context);
+struct phy_device *
+phy_connect(struct net_device *dev, const char *bus_id,
+	    void (*handler)(struct net_device *, void *context),
+	    u32 flags, phy_interface_t interface, void *context);
 void phy_disconnect(struct phy_device *phydev);
 void phy_detach(struct phy_device *phydev);
 void phy_start(struct phy_device *phydev);
@@ -538,7 +542,7 @@ int phy_driver_register(struct phy_driver *new_driver);
 int phy_drivers_register(struct phy_driver *new_driver, int n);
 void phy_state_machine(struct work_struct *work);
 void phy_start_machine(struct phy_device *phydev,
-		void (*handler)(struct net_device *));
+		       void (*handler)(struct net_device *, void *context));
 void phy_stop_machine(struct phy_device *phydev);
 int phy_ethtool_sset(struct phy_device *phydev, struct ethtool_cmd *cmd);
 int phy_ethtool_gset(struct phy_device *phydev, struct ethtool_cmd *cmd);
