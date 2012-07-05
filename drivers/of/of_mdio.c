@@ -144,20 +144,24 @@ EXPORT_SYMBOL(of_phy_find_device);
  * @phy_np: Pointer to device tree node for the PHY
  * @hndlr: Link state callback for the network device
  * @iface: PHY data interface type
+ * @context: Context for callback handler
  *
  * Returns a pointer to the phy_device if successful.  NULL otherwise
  */
-struct phy_device *of_phy_connect(struct net_device *dev,
-				  struct device_node *phy_np,
-				  void (*hndlr)(struct net_device *), u32 flags,
-				  phy_interface_t iface)
+struct phy_device *
+of_phy_connect(struct net_device *dev,
+	       struct device_node *phy_np,
+	       void (*hndlr)(struct net_device *, void *context),
+	       u32 flags, phy_interface_t iface, void *context)
 {
 	struct phy_device *phy = of_phy_find_device(phy_np);
+	int error;
 
 	if (!phy)
 		return NULL;
 
-	return phy_connect_direct(dev, phy, hndlr, flags, iface) ? NULL : phy;
+	error = phy_connect_direct(dev, phy, hndlr, flags, iface, context);
+	return error ? NULL : phy;
 }
 EXPORT_SYMBOL(of_phy_connect);
 
@@ -166,14 +170,16 @@ EXPORT_SYMBOL(of_phy_connect);
  * @dev: pointer to net_device claiming the phy
  * @hndlr: Link state callback for the network device
  * @iface: PHY data interface type
+ * @context: Context for callback handler
  *
  * This function is a temporary stop-gap and will be removed soon.  It is
  * only to support the fs_enet, ucc_geth and gianfar Ethernet drivers.  Do
  * not call this function from new drivers.
  */
-struct phy_device *of_phy_connect_fixed_link(struct net_device *dev,
-					     void (*hndlr)(struct net_device *),
-					     phy_interface_t iface)
+struct phy_device *
+of_phy_connect_fixed_link(struct net_device *dev,
+			  void (*hndlr)(struct net_device *, void *context),
+			  phy_interface_t iface, void *context)
 {
 	struct device_node *net_np;
 	char bus_id[MII_BUS_ID_SIZE + 3];
@@ -194,7 +200,7 @@ struct phy_device *of_phy_connect_fixed_link(struct net_device *dev,
 
 	sprintf(bus_id, PHY_ID_FMT, "fixed-0", be32_to_cpu(phy_id[0]));
 
-	phy = phy_connect(dev, bus_id, hndlr, 0, iface);
+	phy = phy_connect(dev, bus_id, hndlr, 0, iface, context);
 	return IS_ERR(phy) ? NULL : phy;
 }
 EXPORT_SYMBOL(of_phy_connect_fixed_link);
