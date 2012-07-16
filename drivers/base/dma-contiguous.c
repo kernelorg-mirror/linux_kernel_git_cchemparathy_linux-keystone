@@ -234,7 +234,7 @@ int __init dma_declare_contiguous(struct device *dev, unsigned long size,
 				  phys_addr_t base, phys_addr_t limit)
 {
 	struct cma_reserved *r = &cma_reserved[cma_reserved_count];
-	unsigned long alignment;
+	phys_addr_t alignment;
 
 	pr_debug("%s(size %lx, base %08lx, limit %08lx)\n", __func__,
 		 (unsigned long)size, (unsigned long)base,
@@ -271,7 +271,7 @@ int __init dma_declare_contiguous(struct device *dev, unsigned long size,
 		if (!addr) {
 			base = -ENOMEM;
 			goto err;
-		} else if (addr + size > ~(unsigned long)0) {
+		} else if (!dma_supported(dev, addr + size)) {
 			memblock_free(addr, size);
 			base = -EINVAL;
 			goto err;
