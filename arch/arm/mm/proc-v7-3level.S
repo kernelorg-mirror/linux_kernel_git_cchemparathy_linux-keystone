@@ -47,9 +47,10 @@
  */
 ENTRY(cpu_v7_switch_mm)
 #ifdef CONFIG_MMU
-	ldr	r1, [r1, #MM_CONTEXT_ID]	@ get mm->context.id
-	and	r3, r1, #0xff
+	ldr	r2, [r2, #MM_CONTEXT_ID]	@ get mm->context.id
+	and	r3, r2, #0xff
 	mov	r3, r3, lsl #(48 - 32)		@ ASID
+	orr	r3, r3, r1			@ upper 32-bits of pgd phys
 	mcrr	p15, 0, r0, r3, c2		@ set TTB 0
 	isb
 #endif
