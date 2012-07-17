@@ -154,14 +154,28 @@
 #ifdef CONFIG_ARM_PATCH_PHYS_VIRT
 
 extern unsigned long	__pv_offset;
-extern unsigned long	__pv_phys_offset;
+extern phys_addr_t	__pv_phys_offset;
 #define PHYS_OFFSET	__virt_to_phys(PAGE_OFFSET)
 
 static inline phys_addr_t __virt_to_phys(unsigned long x)
 {
-	unsigned long t;
-	early_patch_imm8("add", t, x, __pv_offset, 0);
-	return t;
+	unsigned long tlo, thi;
+
+	early_patch_imm8("add", tlo, x, __pv_offset, 0);
+
+#ifdef CONFIG_ARM_LPAE
+	/*
+	 * On LPAE, we do not _need_ to do 64-bit arithmetic because the high
+	 * order 32 bits are never changed by the phys-virt offset.  We simply
+	 * patch in the high order physical address bits instead.
+	 */
+#ifdef __ARMEB__
+	early_patch_imm8_mov("mov", thi, __pv_phys_offset, 0);
+#else
+	early_patch_imm8_mov("mov", thi, __pv_phys_offset, 4);
+#endif
+#endif
+	return (u64)tlo | (u64)thi << 32;
 }
 
 static inline unsigned long __phys_to_virt(phys_addr_t x)
