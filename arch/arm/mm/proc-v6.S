@@ -17,6 +17,7 @@
 #include <asm/hwcap.h>
 #include <asm/pgtable-hwdef.h>
 #include <asm/pgtable.h>
+#include <asm/cache.h>
 
 #include "proc-macros.S"
 
@@ -206,6 +207,7 @@ __v6_setup:
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r0, c8, c7, 0		@ invalidate I + D TLBs
 	mcr	p15, 0, r0, c2, c0, 2		@ TTB control register
+	mov	r4, r4, lsl #ARCH_PGD_SHIFT
 	ALT_SMP(orr	r4, r4, #TTB_FLAGS_SMP)
 	ALT_UP(orr	r4, r4, #TTB_FLAGS_UP)
 	ALT_SMP(orr	r8, r8, #TTB_FLAGS_SMP)

@@ -17,6 +17,15 @@
 #define ARCH_DMA_MINALIGN	L1_CACHE_BYTES
 
 /*
+ * Minimum guaranted alignment in pgd_alloc().  The page table pointers passed
+ * around in head.S and proc-*.S are shifted by this amount, in order to
+ * leave spare high bits for systems with physical address extension.  This
+ * does not fully accomodate the 40-bit addressing capability of ARM LPAE, but
+ * gives us about 38-bits or so.
+ */
+#define ARCH_PGD_SHIFT		L1_CACHE_SHIFT
+
+/*
  * With EABI on ARMv5 and above we must have 64-bit aligned slab pointers.
  */
 #if defined(CONFIG_AEABI) && (__LINUX_ARM_ARCH__ >= 5)

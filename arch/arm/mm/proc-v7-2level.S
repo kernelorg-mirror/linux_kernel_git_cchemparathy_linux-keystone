@@ -143,8 +143,10 @@ ENDPROC(cpu_v7_set_pte_ext)
 	 */
 	.macro	v7_ttb_setup, zero, ttbr0, ttbr1, tmp
 	mcr	p15, 0, \zero, c2, c0, 2	@ TTB control register
+	mov	\ttbr0, \ttbr0, lsl #ARCH_PGD_SHIFT
 	ALT_SMP(orr	\ttbr0, \ttbr0, #TTB_FLAGS_SMP)
 	ALT_UP(orr	\ttbr0, \ttbr0, #TTB_FLAGS_UP)
+	mov	\ttbr1, \ttbr1, lsl #ARCH_PGD_SHIFT
 	ALT_SMP(orr	\ttbr1, \ttbr1, #TTB_FLAGS_SMP)
 	ALT_UP(orr	\ttbr1, \ttbr1, #TTB_FLAGS_UP)
 	mcr	p15, 0, \ttbr0, c2, c0, 0	@ load TTB0

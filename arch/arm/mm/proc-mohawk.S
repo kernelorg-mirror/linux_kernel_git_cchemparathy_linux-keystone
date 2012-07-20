@@ -28,6 +28,7 @@
 #include <asm/pgtable.h>
 #include <asm/page.h>
 #include <asm/ptrace.h>
+#include <asm/cache.h>
 #include "proc-macros.S"
 
 /*
@@ -388,6 +389,7 @@ __mohawk_setup:
 	mcr	p15, 0, r0, c7, c7		@ invalidate I,D caches
 	mcr	p15, 0, r0, c7, c10, 4		@ drain write buffer
 	mcr	p15, 0, r0, c8, c7		@ invalidate I,D TLBs
+	mov	r4, r4, lsl #ARCH_PGD_SHIFT
 	orr	r4, r4, #0x18			@ cache the page table in L2
 	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
 	mvn	r4, #0				@ do not set page table pointer

@@ -22,6 +22,7 @@
 #include <asm/memory.h>
 #include <asm/thread_info.h>
 #include <asm/pgtable.h>
+#include <asm/cache.h>
 
 #ifdef CONFIG_DEBUG_LL
 #include <mach/debug-macro.S>
@@ -160,7 +161,7 @@ ENDPROC(stext)
  *
  * Returns:
  *  r0, r3, r5-r7 corrupted
- *  r4 = physical page table address
+ *  r4 = page table (see ARCH_PGD_SHIFT in asm/cache.h)
  */
 __create_page_tables:
 	pgtbl	r4, r8				@ page table address
@@ -320,6 +321,7 @@ __create_page_tables:
 #ifdef CONFIG_ARM_LPAE
 	sub	r4, r4, #0x1000		@ point to the PGD table
 #endif
+	mov	r4, r4, lsr #ARCH_PGD_SHIFT
 	mov	pc, lr
 ENDPROC(__create_page_tables)
 	.ltorg
@@ -392,7 +394,7 @@ __secondary_data:
  *  r0  = cp#15 control register
  *  r1  = machine ID
  *  r2  = atags or dtb pointer
- *  r4  = page table pointer
+ *  r4  = page table (see ARCH_PGD_SHIFT in asm/cache.h)
  *  r9  = processor ID
  *  r13 = *virtual* address to jump to upon completion
  */
@@ -422,6 +424,7 @@ __enable_mmu:
 	@ has the processor setup already programmed the page table pointer?
 	adds	r5, r4, #1
 	beq	__turn_mmu_on			@ yes!
+	mov	r4, r4, lsl #ARCH_PGD_SHIFT
 	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
 	b	__turn_mmu_on
 ENDPROC(__enable_mmu)
