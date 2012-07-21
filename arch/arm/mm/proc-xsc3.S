@@ -455,6 +455,7 @@ __xsc3_setup:
 	mcr	p15, 0, ip, c8, c7, 0		@ invalidate I and D TLBs
 	orr	r4, r4, #0x18			@ cache the page table in L2
 	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
+	mvn	r4, #0				@ do not set page table pointer
 
 	mov	r0, #1 << 6			@ cp6 access for early sched_clock
 	mcr	p15, 0, r0, c15, c1, 0		@ write CP access register

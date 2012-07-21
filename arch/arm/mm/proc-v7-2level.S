@@ -139,7 +139,7 @@ ENDPROC(cpu_v7_set_pte_ext)
 
 	/*
 	 * Macro for setting up the TTBRx and TTBCR registers.
-	 * - \ttb0 and \ttb1 updated with the corresponding flags.
+	 * - \ttbr0 and \ttbr1 updated with the corresponding flags.
 	 */
 	.macro	v7_ttb_setup, zero, ttbr0, ttbr1, tmp
 	mcr	p15, 0, \zero, c2, c0, 2	@ TTB control register
@@ -147,6 +147,7 @@ ENDPROC(cpu_v7_set_pte_ext)
 	ALT_UP(orr	\ttbr0, \ttbr0, #TTB_FLAGS_UP)
 	ALT_SMP(orr	\ttbr1, \ttbr1, #TTB_FLAGS_SMP)
 	ALT_UP(orr	\ttbr1, \ttbr1, #TTB_FLAGS_UP)
+	mcr	p15, 0, \ttbr0, c2, c0, 0	@ load TTB0
 	mcr	p15, 0, \ttbr1, c2, c0, 1	@ load TTB1
 	.endm
 

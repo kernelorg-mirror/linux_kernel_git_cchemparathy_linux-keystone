@@ -404,6 +404,7 @@ __arm1026_setup:
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r0, c8, c7		@ invalidate I,D TLBs on v4
 	mcr	p15, 0, r4, c2, c0		@ load page table pointer
+	mvn	r4, #0				@ do not set page table pointer
 #endif
 #ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
 	mov	r0, #4				@ explicitly disable writeback

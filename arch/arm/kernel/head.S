@@ -411,17 +411,18 @@ __enable_mmu:
 #ifdef CONFIG_CPU_ICACHE_DISABLE
 	bic	r0, r0, #CR_I
 #endif
-#ifdef CONFIG_ARM_LPAE
-	mov	r5, #0
-	mcrr	p15, 0, r4, r5, c2		@ load TTBR0
-#else
+#ifndef CONFIG_ARM_LPAE
 	mov	r5, #(domain_val(DOMAIN_USER, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_TABLE, DOMAIN_MANAGER) | \
 		      domain_val(DOMAIN_IO, DOMAIN_CLIENT))
 	mcr	p15, 0, r5, c3, c0, 0		@ load domain access register
-	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
 #endif
+
+	@ has the processor setup already programmed the page table pointer?
+	adds	r5, r4, #1
+	beq	__turn_mmu_on			@ yes!
+	mcr	p15, 0, r4, c2, c0, 0		@ load page table pointer
 	b	__turn_mmu_on
 ENDPROC(__enable_mmu)
 

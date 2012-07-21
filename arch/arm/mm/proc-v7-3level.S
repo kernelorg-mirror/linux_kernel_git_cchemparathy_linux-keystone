@@ -124,6 +124,7 @@ ENDPROC(cpu_v7_set_pte_ext)
 	mcr	p15, 0, \tmp, c2, c0, 2				@ TTBCR
 	addls	\ttbr1, \ttbr1, #TTBR1_OFFSET
 	mcrr	p15, 1, \ttbr1, \zero, c2			@ load TTBR1
+	mcrr	p15, 0, \ttbr0, \zero, c2			@ load TTBR0
 	.endm
 
 	__CPUINIT
