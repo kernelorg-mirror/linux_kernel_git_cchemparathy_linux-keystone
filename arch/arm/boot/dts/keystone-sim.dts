@@ -4,8 +4,8 @@
 / {
 	model = "Texas Instruments Keystone 2 SoC";
 	compatible = "ti,keystone-evm";
-	#address-cells = <1>;
-	#size-cells = <1>;
+	#address-cells = <2>;
+	#size-cells = <2>;
 	interrupt-parent = <&gic>;
 
 	aliases {
@@ -13,11 +13,11 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,115200n8 debug earlyprintk lpj=50000 rdinit=/bin/ash rw root=/dev/ram0 initrd=0x85000000,2M";
+		bootargs = "console=ttyS0,115200n8 debug earlyprintk lpj=50000 rdinit=/bin/ash rw root=/dev/ram0 initrd=0x805000000,2M";
 	};
 
 	memory {
-		reg = <0x80000000 0x8000000>;
+		reg = <0x00000008 0x00000000 0x00000000 0x8000000>;
 	};
 
 	cpus {

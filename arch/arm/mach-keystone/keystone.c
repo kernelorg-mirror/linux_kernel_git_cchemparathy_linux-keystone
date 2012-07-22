@@ -74,6 +74,41 @@ static const char *keystone_match[] __initconst = {
 	NULL,
 };
 
+static void __init keystone_init_meminfo(void)
+{
+	bool lpae = IS_ENABLED(CONFIG_ARM_LPAE);
+	bool pvpatch = IS_ENABLED(CONFIG_ARM_PATCH_PHYS_VIRT);
+	phys_addr_t offset = PHYS_OFFSET - KEYSTONE_LOW_PHYS_START;
+	phys_addr_t mem_start, mem_end;
+
+	BUG_ON(meminfo.nr_banks < 1);
+	mem_start = meminfo.bank[0].start;
+	mem_end = mem_start + meminfo.bank[0].size - 1;
+
+	/* nothing to do if we are running out of the <32-bit space */
+	if (mem_start >= KEYSTONE_LOW_PHYS_START &&
+	    mem_end   <= KEYSTONE_LOW_PHYS_END)
+		return;
+
+	if (!lpae || !pvpatch) {
+		panic("Enable %s%s%s to run outside 32-bit space\n",
+		      !lpae ? __stringify(CONFIG_ARM_LPAE) : "",
+		      (!lpae && !pvpatch) ? " and " : "",
+		      !pvpatch ? __stringify(CONFIG_ARM_PATCH_PHYS_VIRT) : "");
+	}
+
+	if (mem_start < KEYSTONE_HIGH_PHYS_START ||
+	    mem_end   > KEYSTONE_HIGH_PHYS_END) {
+		panic("Invalid address space for memory (%08llx-%08llx)\n",
+		      mem_start, mem_end);
+	}
+
+	offset += KEYSTONE_HIGH_PHYS_START;
+	pr_info("switching to high address space at 0x%llx\n", offset);
+	__pv_phys_offset = offset;
+	__pv_offset      = offset - PAGE_OFFSET;
+}
+
 DT_MACHINE_START(KEYSTONE, "Keystone")
 	smp_ops(keystone_smp_ops)
 	.map_io		= keystone_map_io,
@@ -82,4 +117,8 @@ DT_MACHINE_START(KEYSTONE, "Keystone")
 	.handle_irq	= gic_handle_irq,
 	.init_machine	= keystone_init,
 	.dt_compat	= keystone_match,
+	.init_meminfo	= keystone_init_meminfo,
+#ifdef CONFIG_ZONE_DMA
+	.dma_zone_size	= SZ_2G,
+#endif
 MACHINE_END
