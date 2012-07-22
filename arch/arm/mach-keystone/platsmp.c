@@ -24,6 +24,7 @@
 #include <asm/smp_ops.h>
 #include <asm/hardware/gic.h>
 #include <asm/cacheflush.h>
+#include <asm/tlbflush.h>
 #include <asm/memory.h>
 
 extern void secondary_startup(void);
@@ -51,15 +52,35 @@ static void __init keystone_smp_prepare_cpus(unsigned int max_cpus)
 	/* nothing for now */
 }
 
+#ifdef CONFIG_ARM_LPAE
+static void __cpuinit keystone_secondary_initmem(void)
+{
+	pgd_t *pgd0;
+
+	pgd0 = pgd_offset_k(0);
+	cpu_set_ttbr(1, __pa(pgd0) + TTBR1_OFFSET);
+	local_flush_tlb_all();
+}
+#else
+static void __cpuinit keystone_secondary_initmem(void)
+{
+}
+#endif
+
 static void __cpuinit keystone_secondary_init(unsigned int cpu)
 {
 	gic_secondary_init(0);
+	keystone_secondary_initmem();
 }
 
 static int __cpuinit
 keystone_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
+#ifdef CONFIG_ARM_LPAE
+	unsigned long *jump_ptr = phys_to_virt(0x8000001f0);
+#else
 	unsigned long *jump_ptr = phys_to_virt(0x800001f0);
+#endif
 
 	jump_ptr[cpu] = virt_to_idmap(&secondary_startup);
 	__cpuc_flush_dcache_area(jump_ptr, sizeof(jump_ptr) * 4);
