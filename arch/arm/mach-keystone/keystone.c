@@ -26,6 +26,8 @@
 #include <asm/arch_timer.h>
 #include <asm/hardware/gic.h>
 
+#include "keystone.h"
+
 static struct map_desc io_desc[] = {
 	{
 		.virtual        = 0xfe800000UL,
@@ -73,6 +75,7 @@ static const char *keystone_match[] __initconst = {
 };
 
 DT_MACHINE_START(KEYSTONE, "Keystone")
+	smp_ops(keystone_smp_ops)
 	.map_io		= keystone_map_io,
 	.init_irq	= keystone_init_irq,
 	.timer		= &keystone_timer,
