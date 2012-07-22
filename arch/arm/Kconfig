@@ -380,6 +380,24 @@ config ARCH_HIGHBANK
 	help
 	  Support for the Calxeda Highbank SoC based boards.
 
+config ARCH_KEYSTONE
+	bool "Texas Instruments Keystone Devices"
+	select ARCH_WANT_OPTIONAL_GPIOLIB
+	select ARM_GIC
+	select MULTI_IRQ_HANDLER
+	select CLKDEV_LOOKUP
+	select COMMON_CLK
+	select CLKSRC_MMIO
+	select CPU_V7
+	select GENERIC_CLOCKEVENTS
+	select USE_OF
+	select SPARSE_IRQ
+	select NEED_MACH_MEMORY_H
+	select HAVE_SCHED_CLOCK
+	help
+	  Support for boards based on the Texas Instruments Keystone family of
+	  SoCs.
+
 config ARCH_CLPS711X
 	bool "Cirrus Logic CLPS711x/EP721x/EP731x-based"
 	select CPU_ARM720T

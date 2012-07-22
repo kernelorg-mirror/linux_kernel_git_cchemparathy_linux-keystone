@@ -1,0 +1,77 @@
+/dts-v1/;
+/include/ "skeleton.dtsi"
+
+/ {
+	model = "Texas Instruments Keystone 2 SoC";
+	compatible = "ti,keystone-evm";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	interrupt-parent = <&gic>;
+
+	aliases {
+		serial0	= &uart0;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8 debug earlyprintk lpj=50000 rdinit=/bin/ash rw root=/dev/ram0 initrd=0x85000000,2M";
+	};
+
+	memory {
+		reg = <0x80000000 0x8000000>;
+	};
+
+	cpus {
+		interrupt-parent = <&gic>;
+
+		cpu@0 {
+			compatible = "arm,cortex-a15";
+		};
+
+		cpu@1 {
+			compatible = "arm,cortex-a15";
+		};
+
+		cpu@2 {
+			compatible = "arm,cortex-a15";
+		};
+
+		cpu@3 {
+			compatible = "arm,cortex-a15";
+		};
+
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		compatible = "ti,keystone","simple-bus";
+		interrupt-parent = <&gic>;
+
+		gic:	interrupt-controller@02560000 {
+			compatible = "arm,cortex-a15-gic";
+			#interrupt-cells = <3>;
+			#size-cells = <0>;
+			#address-cells = <1>;
+			interrupt-controller;
+			reg = <0x02561000 0x1000>,
+			      <0x02562000 0x2000>;
+		};
+
+		timer {
+			compatible = "arm,armv7-timer";
+			interrupts = <1 13 0xf08 1 14 0xf08>;
+			clock-frequency = <10000000>; /* Freq in Hz - optional */
+		};
+
+		uart0:	serial@02530c00 {
+			compatible	= "ns16550a";
+			current-speed	= <115200>;
+			reg-shift	= <2>;
+			reg-io-width	= <4>;
+			reg		= <0x02530c00 0x100>;
+			clock-frequency = <48000000>;
+			interrupts	= <0 277 0xf01>;
+		};
+	};
+};
