@@ -395,6 +395,7 @@ config ARCH_KEYSTONE
 	select NEED_MACH_MEMORY_H
 	select HAVE_SCHED_CLOCK
 	select HAVE_SMP
+	select ZONE_DMA if ARM_LPAE
 	help
 	  Support for boards based on the Texas Instruments Keystone family of
 	  SoCs.
