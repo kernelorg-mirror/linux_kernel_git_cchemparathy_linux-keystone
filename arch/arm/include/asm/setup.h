@@ -195,8 +195,8 @@ static const struct tagtable __tagtable_##fn __tag = { tag, fn }
 #define NR_BANKS	CONFIG_ARM_NR_BANKS
 
 struct membank {
-	phys_addr_t start;
-	unsigned long size;
+	phys_addr_t  start;
+	phys_addr_t  size;
 	unsigned int highmem;
 };
 
