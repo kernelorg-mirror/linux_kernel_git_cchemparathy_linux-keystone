@@ -146,6 +146,7 @@ machine-$(CONFIG_ARCH_EP93XX)		:= ep93xx
 machine-$(CONFIG_ARCH_GEMINI)		:= gemini
 machine-$(CONFIG_ARCH_H720X)		:= h720x
 machine-$(CONFIG_ARCH_HIGHBANK)		:= highbank
+machine-$(CONFIG_ARCH_KEYSTONE)		:= keystone
 machine-$(CONFIG_ARCH_INTEGRATOR)	:= integrator
 machine-$(CONFIG_ARCH_IOP13XX)		:= iop13xx
 machine-$(CONFIG_ARCH_IOP32X)		:= iop32x
