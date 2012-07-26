@@ -167,6 +167,16 @@ SECTIONS
 		*(.pv_table)
 		__pv_table_end = .;
 	}
+	.init.runtime_patch_table : {
+		__runtime_patch_table_begin = .;
+		*(.runtime.patch.table)
+		__runtime_patch_table_end = .;
+	}
+	.init.runtime_patch_text : {
+		__runtime_patch_text_begin = .;
+		*(.runtime.patch.text)
+		__runtime_patch_text_end = .;
+	}
 	.init.data : {
 #ifndef CONFIG_XIP_KERNEL
 		INIT_DATA
