@@ -1206,7 +1206,7 @@ static void rio_fixup_device(struct rio_dev *dev)
 {
 }
 
-static int __devinit rio_init(void)
+static int rio_init(void)
 {
 	struct rio_dev *dev = NULL;
 
@@ -1216,7 +1216,7 @@ static int __devinit rio_init(void)
 	return 0;
 }
 
-int __devinit rio_init_mports(void)
+int rio_init_mports(void)
 {
 	struct rio_mport *port;
 
@@ -1231,8 +1231,6 @@ int __devinit rio_init_mports(void)
 
 	return 0;
 }
-
-device_initcall_sync(rio_init_mports);
 
 static int hdids[RIO_MAX_MPORTS + 1];
 
@@ -1262,6 +1260,7 @@ int rio_register_mport(struct rio_mport *port)
 	port->id = next_portid++;
 	port->host_deviceid = rio_get_hdid(port->id);
 	list_add_tail(&port->node, &rio_mports);
+	rio_init_mports();
 	return 0;
 }
 
