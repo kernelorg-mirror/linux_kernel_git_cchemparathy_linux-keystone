@@ -259,6 +259,10 @@ config MACH_TCI6614_EVM
 	help
 	  Say Y here to select the TI TCI6614 Evaluation Module.
 
+config RAPIDIO
+        bool "RapidIO Subsystem support"
+	depends on MACH_TCI6614_EVM
+
 config DAVINCI_MUX
 	bool "DAVINCI multiplexing support"
 	depends on ARCH_DAVINCI
