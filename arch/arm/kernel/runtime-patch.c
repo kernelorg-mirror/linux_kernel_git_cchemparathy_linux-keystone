@@ -163,6 +163,44 @@ static int apply_patch_imm8(const struct patch_info *p)
 	return 0;
 }
 
+#ifdef CONFIG_ARM_RUNTIME_PATCH_TEST
+static void __init __used __naked __patch_test_code_imm8(void)
+{
+	__asm__ __volatile__ (
+		"	.irp	shift1, 0, 6, 12, 18\n"
+		"	.irp	shift2, 0, 1, 2, 3, 4, 5\n"
+		"	add     r1, r2, #(0x41 << (\\shift1 + \\shift2))\n"
+		"	.endr\n"
+		"	.endr\n"
+		"	.word	0\n"
+		: : :
+	);
+}
+
+static void __init test_patch_imm8(void)
+{
+	u32 test_code_addr = (u32)(&__patch_test_code_imm8);
+	u32 *test_code = (u32 *)(test_code_addr & ~0x3);
+	int i, ret;
+	u32 ninsn, insn;
+
+	insn = test_code[0];
+	for (i = 0; test_code[i]; i++) {
+		ret = do_patch_imm8(insn, 0x41 << i, &ninsn);
+		if (ret < 0)
+			pr_err("runtime patch (imm8): failed at shift %d\n", i);
+		else if (ninsn != test_code[i])
+			pr_err("runtime patch (imm8): failed, need %x got %x\n",
+			       test_code[i], ninsn);
+	}
+}
+
+static void __init runtime_patch_test(void)
+{
+	test_patch_imm8();
+}
+#endif
+
 int runtime_patch(const void *table, unsigned size)
 {
 	const struct patch_info *p = table, *end = (table + size);
@@ -185,5 +223,8 @@ void __init runtime_patch_kernel(void)
 	const void *start = &__runtime_patch_table_begin;
 	const void *end   = &__runtime_patch_table_end;
 
+#ifdef CONFIG_ARM_RUNTIME_PATCH_TEST
+	runtime_patch_test();
+#endif
 	BUG_ON(runtime_patch(start, end - start));
 }
