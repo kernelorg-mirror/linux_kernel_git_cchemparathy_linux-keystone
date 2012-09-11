@@ -258,6 +258,15 @@ config CRYPTO_DEV_OMAP_AES
 	  OMAP processors have AES module accelerator. Select this if you
 	  want to use the OMAP module for AES algorithms.
 
+config CRYPTO_DEV_KEYSTONE
+	tristate "Support for TI Keystone security accelerator"
+	depends on TI_KEYSTONE
+	default y if TI_KEYSTONE
+	help
+	  Keystone devices include a security accelerator engine that may be
+	  used for crypto offload.  Select this if you want to use hardware
+	  acceleration for cryptographic algorithms on these devices.
+
 config CRYPTO_DEV_PICOXCELL
 	tristate "Support for picoXcell IPSEC and Layer2 crypto engines"
 	depends on ARCH_PICOXCELL && HAVE_CLK
