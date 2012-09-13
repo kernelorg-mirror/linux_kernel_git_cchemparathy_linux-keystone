@@ -10,6 +10,7 @@ obj-$(CONFIG_TI_DAVINCI_CPDMA) += davinci_cpdma.o
 obj-$(CONFIG_TI_CPSW) += ti_cpsw.o
 ti_cpsw-y := cpsw_ale.o cpsw.o
 obj-$(CONFIG_TI_KEYSTONE_NET) += keystone_net.o
+obj-$(CONFIG_TI_KEYSTONE_PA) += keystone_pa.o
 keystone_net-y += cpsw_ale.o		\
 		  keystone_ethss.o	\
 		  keystone_sgmii.o	\

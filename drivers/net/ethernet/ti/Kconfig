@@ -70,6 +70,17 @@ config TI_KEYSTONE_NET
 	  To compile this driver as a module, choose M here: the module
 	  will be called keystone_net.
 
+config TI_KEYSTONE_PA
+	tristate "TI Keystone Packet Accelerator Support"
+	depends on TI_KEYSTONE
+	default y if TI_KEYSTONE
+	---help---
+	  This driver supports TI's Keystone Packet Accelerator.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called keystone_pa.
+
+
 config TLAN
 	tristate "TI ThunderLAN support"
 	depends on (PCI || EISA)
