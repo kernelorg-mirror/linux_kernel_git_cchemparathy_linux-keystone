@@ -698,7 +698,7 @@ static void bcm_enet_set_flow(struct bcm_enet_priv *priv, int rx_en, int tx_en)
 /*
  * link changed callback (from phylib)
  */
-static void bcm_enet_adjust_phy_link(struct net_device *dev)
+static void bcm_enet_adjust_phy_link(struct net_device *dev, void *context)
 {
 	struct bcm_enet_priv *priv;
 	struct phy_device *phydev;
@@ -800,7 +800,7 @@ static int bcm_enet_open(struct net_device *dev)
 			 priv->mii_bus->id, priv->phy_id);
 
 		phydev = phy_connect(dev, phy_id, bcm_enet_adjust_phy_link, 0,
-				     PHY_INTERFACE_MODE_MII);
+				     PHY_INTERFACE_MODE_MII, NULL);
 
 		if (IS_ERR(phydev)) {
 			dev_err(kdev, "could not attach to PHY\n");

@@ -317,7 +317,7 @@ static void ax_block_output(struct net_device *dev, int count,
 #define AX_MEMR_EEO		BIT(6)
 #define AX_MEMR_EECLK		BIT(7)
 
-static void ax_handle_link_change(struct net_device *dev)
+static void ax_handle_link_change(struct net_device *dev, void *context)
 {
 	struct ax_device  *ax = to_ax_dev(dev);
 	struct phy_device *phy_dev = ax->phy_dev;
@@ -359,7 +359,7 @@ static int ax_mii_probe(struct net_device *dev)
 	}
 
 	ret = phy_connect_direct(dev, phy_dev, ax_handle_link_change, 0,
-				 PHY_INTERFACE_MODE_MII);
+				 PHY_INTERFACE_MODE_MII, NULL);
 	if (ret) {
 		netdev_err(dev, "Could not attach to PHY\n");
 		return ret;

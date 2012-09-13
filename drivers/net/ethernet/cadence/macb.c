@@ -135,7 +135,7 @@ static int macb_mdio_reset(struct mii_bus *bus)
 	return 0;
 }
 
-static void macb_handle_link_change(struct net_device *dev)
+static void macb_handle_link_change(struct net_device *dev, void *context)
 {
 	struct macb *bp = netdev_priv(dev);
 	struct phy_device *phydev = bp->phy_dev;
@@ -209,7 +209,7 @@ static int macb_mii_probe(struct net_device *dev)
 
 	/* attach the mac to the phy */
 	ret = phy_connect_direct(dev, phydev, &macb_handle_link_change, 0,
-				 bp->phy_interface);
+				 bp->phy_interface, NULL);
 	if (ret) {
 		netdev_err(dev, "Could not attach to PHY\n");
 		return ret;

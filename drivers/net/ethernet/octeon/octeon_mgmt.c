@@ -670,7 +670,7 @@ static int octeon_mgmt_ioctl(struct net_device *netdev,
 	return phy_mii_ioctl(p->phydev, rq, cmd);
 }
 
-static void octeon_mgmt_adjust_link(struct net_device *netdev)
+static void octeon_mgmt_adjust_link(struct net_device *netdev, void *context)
 {
 	struct octeon_mgmt *p = netdev_priv(netdev);
 	union cvmx_agl_gmx_prtx_cfg prtx_cfg;
@@ -720,7 +720,7 @@ static int octeon_mgmt_init_phy(struct net_device *netdev)
 
 	p->phydev = of_phy_connect(netdev, p->phy_np,
 				   octeon_mgmt_adjust_link, 0,
-				   PHY_INTERFACE_MODE_MII);
+				   PHY_INTERFACE_MODE_MII, NULL);
 
 	if (IS_ERR(p->phydev)) {
 		p->phydev = NULL;

@@ -661,7 +661,7 @@ static int ethoc_mdio_reset(struct mii_bus *bus)
 	return 0;
 }
 
-static void ethoc_mdio_poll(struct net_device *dev)
+static void ethoc_mdio_poll(struct net_device *dev, void *context)
 {
 }
 
@@ -683,7 +683,7 @@ static int __devinit ethoc_mdio_probe(struct net_device *dev)
 	}
 
 	err = phy_connect_direct(dev, phy, ethoc_mdio_poll, 0,
-			PHY_INTERFACE_MODE_GMII);
+			PHY_INTERFACE_MODE_GMII, NULL);
 	if (err) {
 		dev_err(&dev->dev, "could not attach to PHY\n");
 		return err;
