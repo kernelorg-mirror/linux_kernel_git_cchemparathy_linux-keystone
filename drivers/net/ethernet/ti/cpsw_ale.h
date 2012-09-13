@@ -27,6 +27,12 @@ struct cpsw_ale {
 	struct cpsw_ale_params	params;
 	struct timer_list	timer;
 	unsigned long		ageout;
+	struct device_attribute ale_control_attr;
+#define control_attr_to_ale(attr)	\
+	container_of(attr, struct cpsw_ale, ale_control_attr);
+	struct device_attribute ale_table_attr;
+#define table_attr_to_ale(attr)		\
+	container_of(attr, struct cpsw_ale, ale_table_attr);
 };
 
 enum cpsw_ale_control {
@@ -80,11 +86,16 @@ void cpsw_ale_stop(struct cpsw_ale *ale);
 
 int cpsw_ale_set_ageout(struct cpsw_ale *ale, int ageout);
 int cpsw_ale_flush(struct cpsw_ale *ale, int port_mask);
-int cpsw_ale_add_ucast(struct cpsw_ale *ale, u8 *addr, int port, int flags);
-int cpsw_ale_del_ucast(struct cpsw_ale *ale, u8 *addr, int port);
+int cpsw_ale_add_ucast(struct cpsw_ale *ale, u8 *addr, int port,
+		       int flags, int vid);
+int cpsw_ale_del_ucast(struct cpsw_ale *ale, u8 *addr, int port, int vid);
 int cpsw_ale_add_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask,
-			int super, int mcast_state);
-int cpsw_ale_del_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask);
+			int super, int mcast_state, int vid);
+int cpsw_ale_del_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask, int vid);
+
+int cpsw_ale_add_vlan(struct cpsw_ale *ale, int vid, int member_list,
+		      int reg_mcast, int unreg_mcast, int force_untag_egress);
+int cpsw_ale_del_vlan(struct cpsw_ale *ale, int vid);
 
 int cpsw_ale_control_get(struct cpsw_ale *ale, int port, int control);
 int cpsw_ale_control_set(struct cpsw_ale *ale, int port,
