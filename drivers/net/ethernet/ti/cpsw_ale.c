@@ -24,8 +24,11 @@
 #include "cpsw_ale.h"
 
 #define BITMASK(bits)		(BIT(bits) - 1)
+#define ADDR_FMT_STR		"%02x:%02x:%02x:%02x:%02x:%02x"
+#define ADDR_FMT_ARGS(addr)	(addr)[0], (addr)[1], (addr)[2], \
+				(addr)[3], (addr)[4], (addr)[5]
 #define ALE_ENTRY_BITS		68
-#define ALE_ENTRY_WORDS	DIV_ROUND_UP(ALE_ENTRY_BITS, 32)
+#define ALE_ENTRY_WORDS		DIV_ROUND_UP(ALE_ENTRY_BITS, 32)
 
 #define ALE_VERSION_MAJOR(rev)	((rev >> 8) & 0xff)
 #define ALE_VERSION_MINOR(rev)	(rev & 0xff)
@@ -147,10 +150,29 @@ static int cpsw_ale_write(struct cpsw_ale *ale, int idx, u32 *ale_entry)
 	return idx;
 }
 
-static int cpsw_ale_match_addr(struct cpsw_ale *ale, u8 *addr)
+static int cpsw_ale_match_vlan(struct cpsw_ale *ale, int vid)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS];
 	int type, idx;
+
+	for (idx = 0; idx < ale->params.ale_entries; idx++) {
+		cpsw_ale_read(ale, idx, ale_entry);
+		type = cpsw_ale_get_entry_type(ale_entry);
+		if (type != ALE_TYPE_VLAN && type != ALE_TYPE_VLAN_ADDR)
+			continue;
+
+		if (vid == cpsw_ale_get_vlan_id(ale_entry))
+			return idx;
+	}
+
+	return -ENOENT;
+}
+
+static int cpsw_ale_match_addr(struct cpsw_ale *ale, u8 *addr, int vid)
+{
+	u32 ale_entry[ALE_ENTRY_WORDS];
+	int type, idx;
+	int match_type = ALE_TYPE_VLAN_ADDR;
 
 	for (idx = 0; idx < ale->params.ale_entries; idx++) {
 		u8 entry_addr[6];
@@ -159,8 +181,14 @@ static int cpsw_ale_match_addr(struct cpsw_ale *ale, u8 *addr)
 		type = cpsw_ale_get_entry_type(ale_entry);
 		if (type != ALE_TYPE_ADDR && type != ALE_TYPE_VLAN_ADDR)
 			continue;
+
+		if (vid < 0)
+			match_type = ALE_TYPE_ADDR;
+
 		cpsw_ale_get_addr(ale_entry, entry_addr);
-		if (memcmp(entry_addr, addr, 6) == 0)
+		if ((memcmp(entry_addr, addr, 6) == 0) &&
+		    (vid < 0 || vid == cpsw_ale_get_vlan_id(ale_entry)) &&
+		    (match_type == type))
 			return idx;
 	}
 	return -ENOENT;
@@ -249,19 +277,140 @@ int cpsw_ale_flush(struct cpsw_ale *ale, int port_mask)
 	return 0;
 }
 
-int cpsw_ale_add_ucast(struct cpsw_ale *ale, u8 *addr, int port, int flags)
+static int cpsw_ale_dump_mcast(u32 *ale_entry, char *buf, int len)
+{
+	int outlen = 0;
+	static const char * const str_mcast_state[] = {"f", "blf", "lf", "f"};
+	int mcast_state = cpsw_ale_get_mcast_state(ale_entry);
+	int port_mask   = cpsw_ale_get_port_mask(ale_entry);
+	int super       = cpsw_ale_get_super(ale_entry);
+
+	outlen += snprintf(buf + outlen, len - outlen,
+			   "mcstate: %s(%d), ", str_mcast_state[mcast_state],
+			   mcast_state);
+	outlen += snprintf(buf + outlen, len - outlen,
+			   "port mask: %x, %ssuper\n", port_mask,
+			   super ? "" : "no ");
+	return outlen;
+}
+
+static int cpsw_ale_dump_ucast(u32 *ale_entry, char *buf, int len)
+{
+	int outlen = 0;
+	static const char * const str_ucast_type[] = {"persistant", "untouched",
+							"oui", "touched"};
+	int ucast_type  = cpsw_ale_get_ucast_type(ale_entry);
+	int port_num    = cpsw_ale_get_port_num(ale_entry);
+	int secure      = cpsw_ale_get_secure(ale_entry);
+	int blocked     = cpsw_ale_get_blocked(ale_entry);
+
+	outlen += snprintf(buf + outlen, len - outlen,
+			   "uctype: %s(%d), ", str_ucast_type[ucast_type],
+			   ucast_type);
+	outlen += snprintf(buf + outlen, len - outlen,
+			   "port: %d%s%s\n", port_num, secure ? ", Secure" : "",
+			   blocked ? ", Blocked" : "");
+	return outlen;
+}
+
+static int cpsw_ale_dump_entry(int idx, u32 *ale_entry, char *buf, int len)
+{
+	int type, outlen = 0;
+	u8 addr[6];
+	static const char * const str_type[] = {"free", "addr",
+						"vlan", "vlan+addr"};
+
+	type = cpsw_ale_get_entry_type(ale_entry);
+	if (type == ALE_TYPE_FREE)
+		return outlen;
+
+	if (idx >= 0) {
+		outlen += snprintf(buf + outlen, len - outlen,
+				   "index %d, ", idx);
+	}
+
+	outlen += snprintf(buf + outlen, len - outlen, "raw: %08x %08x %08x, ",
+			   ale_entry[0], ale_entry[1], ale_entry[2]);
+
+	outlen += snprintf(buf + outlen, len - outlen,
+			   "type: %s(%d), ", str_type[type], type);
+
+	cpsw_ale_get_addr(ale_entry, addr);
+	outlen += snprintf(buf + outlen, len - outlen,
+			   "addr: " ADDR_FMT_STR ", ", ADDR_FMT_ARGS(addr));
+
+	if (type == ALE_TYPE_VLAN || type == ALE_TYPE_VLAN_ADDR) {
+		outlen += snprintf(buf + outlen, len - outlen, "vlan: %d, ",
+				   cpsw_ale_get_vlan_id(ale_entry));
+	}
+
+	outlen += cpsw_ale_get_mcast(ale_entry) ?
+		  cpsw_ale_dump_mcast(ale_entry, buf + outlen, len - outlen) :
+		  cpsw_ale_dump_ucast(ale_entry, buf + outlen, len - outlen);
+
+	return outlen;
+}
+
+int cpsw_ale_add_vlan(struct cpsw_ale *ale, int vid, int member_list,
+		      int reg_mcast, int unreg_mcast, int force_untag_egress)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
 	int idx;
 
-	cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_ADDR);
+	cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_VLAN);
+	cpsw_ale_set_vlan_id(ale_entry, vid);
+	cpsw_ale_set_vlan_untag_force(ale_entry, force_untag_egress);
+	cpsw_ale_set_vlan_reg_mcast(ale_entry, reg_mcast);
+	cpsw_ale_set_vlan_unreg_mcast(ale_entry, unreg_mcast);
+	cpsw_ale_set_vlan_member_list(ale_entry, member_list);
+
+	idx = cpsw_ale_match_vlan(ale, vid);
+	if (idx < 0)
+		idx = cpsw_ale_match_free(ale);
+	if (idx < 0)
+		idx = cpsw_ale_find_ageable(ale);
+	if (idx < 0)
+		return -ENOMEM;
+
+	cpsw_ale_write(ale, idx, ale_entry);
+
+	return 0;
+}
+
+int cpsw_ale_del_vlan(struct cpsw_ale *ale, int vid)
+{
+	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
+	int idx;
+
+	idx = cpsw_ale_match_vlan(ale, vid);
+	if (idx < 0)
+		return -ENOENT;
+
+	cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_FREE);
+	cpsw_ale_write(ale, idx, ale_entry);
+
+	return 0;
+}
+
+int cpsw_ale_add_ucast(struct cpsw_ale *ale, u8 *addr, int port,
+		       int flags, int vid)
+{
+	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
+	int idx;
+
+	if (vid >= 0) {
+		cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_VLAN_ADDR);
+		cpsw_ale_set_vlan_id(ale_entry, vid);
+	} else
+		cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_ADDR);
+
 	cpsw_ale_set_addr(ale_entry, addr);
 	cpsw_ale_set_ucast_type(ale_entry, ALE_UCAST_PERSISTANT);
 	cpsw_ale_set_secure(ale_entry, (flags & ALE_SECURE) ? 1 : 0);
 	cpsw_ale_set_blocked(ale_entry, (flags & ALE_BLOCKED) ? 1 : 0);
 	cpsw_ale_set_port_num(ale_entry, port);
 
-	idx = cpsw_ale_match_addr(ale, addr);
+	idx = cpsw_ale_match_addr(ale, addr, vid);
 	if (idx < 0)
 		idx = cpsw_ale_match_free(ale);
 	if (idx < 0)
@@ -273,12 +422,12 @@ int cpsw_ale_add_ucast(struct cpsw_ale *ale, u8 *addr, int port, int flags)
 	return 0;
 }
 
-int cpsw_ale_del_ucast(struct cpsw_ale *ale, u8 *addr, int port)
+int cpsw_ale_del_ucast(struct cpsw_ale *ale, u8 *addr, int port, int vid)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
 	int idx;
 
-	idx = cpsw_ale_match_addr(ale, addr);
+	idx = cpsw_ale_match_addr(ale, addr, vid);
 	if (idx < 0)
 		return -ENOENT;
 
@@ -288,16 +437,21 @@ int cpsw_ale_del_ucast(struct cpsw_ale *ale, u8 *addr, int port)
 }
 
 int cpsw_ale_add_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask,
-			int super, int mcast_state)
+			int super, int mcast_state, int vid)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
 	int idx, mask;
 
-	idx = cpsw_ale_match_addr(ale, addr);
+	idx = cpsw_ale_match_addr(ale, addr, vid);
 	if (idx >= 0)
 		cpsw_ale_read(ale, idx, ale_entry);
 
-	cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_ADDR);
+	if (vid >= 0) {
+		cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_VLAN_ADDR);
+		cpsw_ale_set_vlan_id(ale_entry, vid);
+	} else
+		cpsw_ale_set_entry_type(ale_entry, ALE_TYPE_ADDR);
+
 	cpsw_ale_set_addr(ale_entry, addr);
 	cpsw_ale_set_super(ale_entry, super);
 	cpsw_ale_set_mcast_state(ale_entry, mcast_state);
@@ -317,12 +471,12 @@ int cpsw_ale_add_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask,
 	return 0;
 }
 
-int cpsw_ale_del_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask)
+int cpsw_ale_del_mcast(struct cpsw_ale *ale, u8 *addr, int port_mask, int vid)
 {
 	u32 ale_entry[ALE_ENTRY_WORDS] = {0, 0, 0};
 	int idx;
 
-	idx = cpsw_ale_match_addr(ale, addr);
+	idx = cpsw_ale_match_addr(ale, addr, vid);
 	if (idx < 0)
 		return -EINVAL;
 
@@ -569,6 +723,96 @@ int cpsw_ale_control_get(struct cpsw_ale *ale, int port, int control)
 	return tmp & BITMASK(info->bits);
 }
 
+static ssize_t cpsw_ale_control_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int i, port, len = 0;
+	const struct ale_control_info *info;
+	struct cpsw_ale *ale = control_attr_to_ale(attr);
+
+	for (i = 0, info = ale_controls; i < ALE_NUM_CONTROLS; i++, info++) {
+		/* global controls */
+		if (info->port_shift == 0 &&  info->port_offset == 0) {
+			len += snprintf(buf + len, SZ_4K - len,
+					"%s=%d\n", info->name,
+					cpsw_ale_control_get(ale, 0, i));
+			continue;
+		}
+
+		/* port specific controls */
+		for (port = 0; port < ale->params.ale_ports; port++) {
+			len += snprintf(buf + len, SZ_4K - len,
+					"%s.%d=%d\n", info->name, port,
+					cpsw_ale_control_get(ale, port, i));
+		}
+	}
+
+	return len;
+}
+
+static ssize_t cpsw_ale_control_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	char ctrl_str[33];
+	int port = 0, value, len, ret, control;
+	unsigned long end;
+	struct cpsw_ale *ale = control_attr_to_ale(attr);
+
+	len = strcspn(buf, ".=");
+	if (len >= 32)
+		return -ENOMEM;
+
+	strncpy(ctrl_str, buf, len);
+	ctrl_str[len] = '\0';
+	buf += len;
+
+	if (*buf == '.')
+		port = kstrtoul(buf + 1, 0, &end);
+
+	if (*buf != '=')
+		return -EINVAL;
+
+	value = kstrtoul(buf + 1, 0, NULL);
+
+	for (control = 0; control < ALE_NUM_CONTROLS; control++)
+		if (strcmp(ctrl_str, ale_controls[control].name) == 0)
+			break;
+
+	if (control >= ALE_NUM_CONTROLS)
+		return -ENOENT;
+
+	dev_dbg(ale->params.dev, "processing command %s.%d=%d\n",
+		ale_controls[control].name, port, value);
+
+	ret = cpsw_ale_control_set(ale, port, control, value);
+	if (ret < 0)
+		return ret;
+
+	return count;
+}
+DEVICE_ATTR(ale_control, S_IRUGO | S_IWUSR, cpsw_ale_control_show,
+	    cpsw_ale_control_store);
+
+static ssize_t cpsw_ale_table_show(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	int len = SZ_4K, outlen = 0, idx;
+	u32 ale_entry[ALE_ENTRY_WORDS];
+	struct cpsw_ale *ale = table_attr_to_ale(attr);
+
+	for (idx = 0; idx < ale->params.ale_entries; idx++) {
+		cpsw_ale_read(ale, idx, ale_entry);
+		outlen += cpsw_ale_dump_entry(idx, ale_entry, buf + outlen,
+					      len - outlen);
+	}
+
+	return outlen;
+}
+DEVICE_ATTR(ale_table, S_IRUGO, cpsw_ale_table_show, NULL);
+
 static void cpsw_ale_timer(unsigned long arg)
 {
 	struct cpsw_ale *ale = (struct cpsw_ale *)arg;
@@ -595,12 +839,21 @@ int cpsw_ale_set_ageout(struct cpsw_ale *ale, int ageout)
 void cpsw_ale_start(struct cpsw_ale *ale)
 {
 	u32 rev;
+	int ret;
 
 	rev = __raw_readl(ale->params.ale_regs + ALE_IDVER);
-	dev_dbg(ale->params.dev, "initialized cpsw ale revision %d.%d\n",
+	dev_info(ale->params.dev, "initialized cpsw ale revision %d.%d\n",
 		ALE_VERSION_MAJOR(rev), ALE_VERSION_MINOR(rev));
 	cpsw_ale_control_set(ale, 0, ALE_ENABLE, 1);
 	cpsw_ale_control_set(ale, 0, ALE_CLEAR, 1);
+
+	ale->ale_control_attr = dev_attr_ale_control;
+	ret = device_create_file(ale->params.dev, &ale->ale_control_attr);
+	WARN_ON(ret < 0);
+
+	ale->ale_table_attr = dev_attr_ale_table;
+	ret = device_create_file(ale->params.dev, &ale->ale_table_attr);
+	WARN_ON(ret < 0);
 
 	init_timer(&ale->timer);
 	ale->timer.data	    = (unsigned long)ale;
@@ -614,6 +867,8 @@ void cpsw_ale_start(struct cpsw_ale *ale)
 void cpsw_ale_stop(struct cpsw_ale *ale)
 {
 	del_timer_sync(&ale->timer);
+	device_remove_file(ale->params.dev, &ale->ale_table_attr);
+	device_remove_file(ale->params.dev, &ale->ale_control_attr);
 }
 
 struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params)
