@@ -34,6 +34,8 @@
 #include "cpsw_ale.h"
 #include "davinci_cpdma.h"
 
+#define CPSW_NON_VLAN_ADDR	-1
+
 #define CPSW_DEBUG	(NETIF_MSG_HW		| NETIF_MSG_WOL		| \
 			 NETIF_MSG_DRV		| NETIF_MSG_LINK	| \
 			 NETIF_MSG_IFUP		| NETIF_MSG_INTR	| \
@@ -399,7 +401,7 @@ static void _cpsw_adjust_link(struct cpsw_slave *slave,
 	slave->mac_control = mac_control;
 }
 
-static void cpsw_adjust_link(struct net_device *ndev)
+static void cpsw_adjust_link(struct net_device *ndev, void *context)
 {
 	struct cpsw_priv	*priv = netdev_priv(ndev);
 	bool			link = false;
@@ -449,10 +451,12 @@ static void cpsw_slave_open(struct cpsw_slave *slave, struct cpsw_priv *priv)
 	slave_port = cpsw_get_slave_port(priv, slave->slave_num);
 
 	cpsw_ale_add_mcast(priv->ale, priv->ndev->broadcast,
-			   1 << slave_port, 0, ALE_MCAST_FWD_2);
+			   1 << slave_port, 0,
+			   ALE_MCAST_FWD_2, CPSW_NON_VLAN_ADDR);
 
 	slave->phy = phy_connect(priv->ndev, slave->data->phy_id,
-				 &cpsw_adjust_link, 0, slave->data->phy_if);
+				 &cpsw_adjust_link, 0,
+				 slave->data->phy_if, NULL);
 	if (IS_ERR(slave->phy)) {
 		dev_err(priv->dev, "phy %s not found on slave %d\n",
 			slave->data->phy_id, slave->slave_num);
@@ -481,9 +485,11 @@ static void cpsw_init_host_port(struct cpsw_priv *priv)
 	cpsw_ale_control_set(priv->ale, priv->host_port,
 			     ALE_PORT_STATE, ALE_PORT_STATE_FORWARD);
 
-	cpsw_ale_add_ucast(priv->ale, priv->mac_addr, priv->host_port, 0);
+	cpsw_ale_add_ucast(priv->ale, priv->mac_addr, priv->host_port,
+			   0, CPSW_NON_VLAN_ADDR);
 	cpsw_ale_add_mcast(priv->ale, priv->ndev->broadcast,
-			   1 << priv->host_port, 0, ALE_MCAST_FWD_2);
+			   1 << priv->host_port, 0,
+			   ALE_MCAST_FWD_2, CPSW_NON_VLAN_ADDR);
 }
 
 static int cpsw_ndo_open(struct net_device *ndev)
