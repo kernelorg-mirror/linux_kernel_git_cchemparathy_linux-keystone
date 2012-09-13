@@ -316,7 +316,7 @@ static int sbmac_mii_ioctl(struct net_device *dev, struct ifreq *rq, int cmd);
 static int sbmac_close(struct net_device *dev);
 static int sbmac_poll(struct napi_struct *napi, int budget);
 
-static void sbmac_mii_poll(struct net_device *dev);
+static void sbmac_mii_poll(struct net_device *dev, void *context);
 static int sbmac_mii_probe(struct net_device *dev);
 
 static void sbmac_mii_sync(void __iomem *sbm_mdio);
@@ -2386,7 +2386,7 @@ static int sbmac_mii_probe(struct net_device *dev)
 	}
 
 	phy_dev = phy_connect(dev, dev_name(&phy_dev->dev), &sbmac_mii_poll, 0,
-			      PHY_INTERFACE_MODE_GMII);
+			      PHY_INTERFACE_MODE_GMII, NULL);
 	if (IS_ERR(phy_dev)) {
 		printk(KERN_ERR "%s: could not attach to PHY\n", dev->name);
 		return PTR_ERR(phy_dev);
@@ -2415,7 +2415,7 @@ static int sbmac_mii_probe(struct net_device *dev)
 }
 
 
-static void sbmac_mii_poll(struct net_device *dev)
+static void sbmac_mii_poll(struct net_device *dev, void *context)
 {
 	struct sbmac_softc *sc = netdev_priv(dev);
 	struct phy_device *phy_dev = sc->phy_dev;

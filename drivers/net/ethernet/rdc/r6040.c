@@ -1000,7 +1000,7 @@ static const struct net_device_ops r6040_netdev_ops = {
 #endif
 };
 
-static void r6040_adjust_link(struct net_device *dev)
+static void r6040_adjust_link(struct net_device *dev, void *context)
 {
 	struct r6040_private *lp = netdev_priv(dev);
 	struct phy_device *phydev = lp->phydev;
@@ -1045,7 +1045,7 @@ static int r6040_mii_probe(struct net_device *dev)
 	}
 
 	phydev = phy_connect(dev, dev_name(&phydev->dev), &r6040_adjust_link,
-				0, PHY_INTERFACE_MODE_MII);
+				0, PHY_INTERFACE_MODE_MII, NULL);
 
 	if (IS_ERR(phydev)) {
 		dev_err(&lp->pdev->dev, "could not attach to PHY\n");

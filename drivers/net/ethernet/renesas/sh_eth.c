@@ -1369,7 +1369,7 @@ other_irq:
 }
 
 /* PHY state control function */
-static void sh_eth_adjust_link(struct net_device *ndev)
+static void sh_eth_adjust_link(struct net_device *ndev, void *context)
 {
 	struct sh_eth_private *mdp = netdev_priv(ndev);
 	struct phy_device *phydev = mdp->phydev;
@@ -1422,7 +1422,7 @@ static int sh_eth_phy_init(struct net_device *ndev)
 
 	/* Try connect to PHY */
 	phydev = phy_connect(ndev, phy_id, sh_eth_adjust_link,
-				0, mdp->phy_interface);
+				0, mdp->phy_interface, NULL);
 	if (IS_ERR(phydev)) {
 		dev_err(&ndev->dev, "phy_connect failed\n");
 		return PTR_ERR(phydev);

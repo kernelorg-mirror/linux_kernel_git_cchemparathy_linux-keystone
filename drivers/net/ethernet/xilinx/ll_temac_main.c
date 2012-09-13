@@ -590,7 +590,7 @@ static void temac_device_reset(struct net_device *ndev)
 	ndev->trans_start = jiffies; /* prevent tx timeout */
 }
 
-void temac_adjust_link(struct net_device *ndev)
+void temac_adjust_link(struct net_device *ndev, void *context)
 {
 	struct temac_local *lp = netdev_priv(ndev);
 	struct phy_device *phy = lp->phy_dev;
@@ -856,7 +856,7 @@ static int temac_open(struct net_device *ndev)
 
 	if (lp->phy_node) {
 		lp->phy_dev = of_phy_connect(lp->ndev, lp->phy_node,
-					     temac_adjust_link, 0, 0);
+					     temac_adjust_link, 0, 0, NULL);
 		if (!lp->phy_dev) {
 			dev_err(lp->dev, "of_phy_connect() failed\n");
 			return -ENODEV;

@@ -1446,10 +1446,10 @@ static int init_phy(struct net_device *dev)
 	interface = gfar_get_interface(dev);
 
 	priv->phydev = of_phy_connect(dev, priv->phy_node, &adjust_link, 0,
-				      interface);
+				      interface, NULL);
 	if (!priv->phydev)
 		priv->phydev = of_phy_connect_fixed_link(dev, &adjust_link,
-							 interface);
+							 interface, NULL);
 	if (!priv->phydev) {
 		dev_err(&dev->dev, "could not attach to PHY\n");
 		return -ENODEV;
@@ -2949,7 +2949,7 @@ static irqreturn_t gfar_interrupt(int irq, void *grp_id)
  * function converts those variables into the appropriate
  * register values, and can bring down the device if needed.
  */
-static void adjust_link(struct net_device *dev)
+static void adjust_link(struct net_device *dev, void *context)
 {
 	struct gfar_private *priv = netdev_priv(dev);
 	struct gfar __iomem *regs = priv->gfargrp[0].regs;

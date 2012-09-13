@@ -1598,7 +1598,7 @@ static void ugeth_activate(struct ucc_geth_private *ugeth)
  * register values, and can bring down the device if needed.
  */
 
-static void adjust_link(struct net_device *dev)
+static void adjust_link(struct net_device *dev, void *context)
 {
 	struct ucc_geth_private *ugeth = netdev_priv(dev);
 	struct ucc_geth __iomem *ug_regs;
@@ -1749,10 +1749,10 @@ static int init_phy(struct net_device *dev)
 	priv->oldduplex = -1;
 
 	phydev = of_phy_connect(dev, ug_info->phy_node, &adjust_link, 0,
-				priv->phy_interface);
+				priv->phy_interface, NULL);
 	if (!phydev)
 		phydev = of_phy_connect_fixed_link(dev, &adjust_link,
-						   priv->phy_interface);
+						   priv->phy_interface, NULL);
 	if (!phydev) {
 		dev_err(&dev->dev, "Could not attach to PHY\n");
 		return -ENODEV;
