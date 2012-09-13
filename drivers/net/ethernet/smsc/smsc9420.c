@@ -1130,7 +1130,7 @@ static void smsc9420_phy_update_flowcontrol(struct smsc9420_pdata *pd)
 
 /* Update link mode if anything has changed.  Called periodically when the
  * PHY is in polling mode, even if nothing has changed. */
-static void smsc9420_phy_adjust_link(struct net_device *dev)
+static void smsc9420_phy_adjust_link(struct net_device *dev, NULL)
 {
 	struct smsc9420_pdata *pd = netdev_priv(dev);
 	struct phy_device *phy_dev = pd->phy_dev;
@@ -1179,7 +1179,8 @@ static int smsc9420_mii_probe(struct net_device *dev)
 		phydev->phy_id);
 
 	phydev = phy_connect(dev, dev_name(&phydev->dev),
-		smsc9420_phy_adjust_link, 0, PHY_INTERFACE_MODE_MII);
+				smsc9420_phy_adjust_link, 0,
+				PHY_INTERFACE_MODE_MII, NULL);
 
 	if (IS_ERR(phydev)) {
 		pr_err("%s: Could not attach to PHY\n", dev->name);

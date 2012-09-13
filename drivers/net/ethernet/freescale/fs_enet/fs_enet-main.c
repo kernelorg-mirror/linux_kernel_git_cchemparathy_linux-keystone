@@ -771,7 +771,7 @@ static void generic_adjust_link(struct  net_device *dev)
 }
 
 
-static void fs_adjust_link(struct net_device *dev)
+static void fs_adjust_link(struct net_device *dev, void *context)
 {
 	struct fs_enet_private *fep = netdev_priv(dev);
 	unsigned long flags;
@@ -800,10 +800,10 @@ static int fs_init_phy(struct net_device *dev)
 		PHY_INTERFACE_MODE_RMII : PHY_INTERFACE_MODE_MII;
 
 	phydev = of_phy_connect(dev, fep->fpi->phy_node, &fs_adjust_link, 0,
-				iface);
+				iface, NULL);
 	if (!phydev) {
 		phydev = of_phy_connect_fixed_link(dev, &fs_adjust_link,
-						   iface);
+						   iface, NULL);
 	}
 	if (!phydev) {
 		dev_err(&dev->dev, "Could not attach to PHY\n");

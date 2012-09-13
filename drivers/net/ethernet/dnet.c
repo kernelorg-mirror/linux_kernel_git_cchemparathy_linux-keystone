@@ -176,7 +176,7 @@ static int dnet_mdio_reset(struct mii_bus *bus)
 	return 0;
 }
 
-static void dnet_handle_link_change(struct net_device *dev)
+static void dnet_handle_link_change(struct net_device *dev, void *context)
 {
 	struct dnet *bp = netdev_priv(dev);
 	struct phy_device *phydev = bp->phy_dev;
@@ -282,11 +282,11 @@ static int dnet_mii_probe(struct net_device *dev)
 	if (bp->capabilities & DNET_HAS_RMII) {
 		phydev = phy_connect(dev, dev_name(&phydev->dev),
 				     &dnet_handle_link_change, 0,
-				     PHY_INTERFACE_MODE_RMII);
+				     PHY_INTERFACE_MODE_RMII, NULL);
 	} else {
 		phydev = phy_connect(dev, dev_name(&phydev->dev),
 				     &dnet_handle_link_change, 0,
-				     PHY_INTERFACE_MODE_MII);
+				     PHY_INTERFACE_MODE_MII, NULL);
 	}
 
 	if (IS_ERR(phydev)) {

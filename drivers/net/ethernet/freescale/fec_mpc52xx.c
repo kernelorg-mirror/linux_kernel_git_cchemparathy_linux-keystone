@@ -172,7 +172,7 @@ static int mpc52xx_fec_alloc_rx_buffers(struct net_device *dev, struct bcom_task
 }
 
 /* based on generic_adjust_link from fs_enet-main.c */
-static void mpc52xx_fec_adjust_link(struct net_device *dev)
+static void mpc52xx_fec_adjust_link(struct net_device *dev, void *context)
 {
 	struct mpc52xx_fec_priv *priv = netdev_priv(dev);
 	struct phy_device *phydev = priv->phydev;
@@ -229,7 +229,8 @@ static int mpc52xx_fec_open(struct net_device *dev)
 
 	if (priv->phy_node) {
 		priv->phydev = of_phy_connect(priv->ndev, priv->phy_node,
-					      mpc52xx_fec_adjust_link, 0, 0);
+					      mpc52xx_fec_adjust_link,
+					      0, 0, NULL);
 		if (!priv->phydev) {
 			dev_err(&dev->dev, "of_phy_connect failed\n");
 			return -ENODEV;

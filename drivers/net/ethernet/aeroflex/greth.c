@@ -1218,7 +1218,7 @@ static int greth_mdio_reset(struct mii_bus *bus)
 	return 0;
 }
 
-static void greth_link_change(struct net_device *dev)
+static void greth_link_change(struct net_device *dev, void *context)
 {
 	struct greth_private *greth = netdev_priv(dev);
 	struct phy_device *phydev = greth->phy;
@@ -1289,7 +1289,8 @@ static int greth_mdio_probe(struct net_device *dev)
 	ret = phy_connect_direct(dev, phy, &greth_link_change,
 			0, greth->gbit_mac ?
 			PHY_INTERFACE_MODE_GMII :
-			PHY_INTERFACE_MODE_MII);
+			PHY_INTERFACE_MODE_MII.
+			NULL);
 	if (ret) {
 		if (netif_msg_ifup(greth))
 			dev_err(&dev->dev, "could not attach to PHY\n");
@@ -1363,7 +1364,7 @@ static int greth_mdio_init(struct greth_private *greth)
 		while (!phy_aneg_done(greth->phy) && time_before(jiffies, timeout)) {
 		}
 		genphy_read_status(greth->phy);
-		greth_link_change(greth->netdev);
+		greth_link_change(greth->netdev, NULL);
 	}
 
 	return 0;

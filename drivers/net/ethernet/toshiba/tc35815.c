@@ -537,7 +537,7 @@ static int tc_mdio_write(struct mii_bus *bus, int mii_id, int regnum, u16 val)
 	return 0;
 }
 
-static void tc_handle_link_change(struct net_device *dev)
+static void tc_handle_link_change(struct net_device *dev, void *context)
 {
 	struct tc35815_local *lp = netdev_priv(dev);
 	struct phy_device *phydev = lp->phy_dev;
@@ -635,7 +635,8 @@ static int tc_mii_probe(struct net_device *dev)
 	phydev = phy_connect(dev, dev_name(&phydev->dev),
 			     &tc_handle_link_change, 0,
 			     lp->chiptype == TC35815_TX4939 ?
-			     PHY_INTERFACE_MODE_RMII : PHY_INTERFACE_MODE_MII);
+			     PHY_INTERFACE_MODE_RMII : PHY_INTERFACE_MODE_MII,
+			     NULL);
 	if (IS_ERR(phydev)) {
 		printk(KERN_ERR "%s: Could not attach to PHY\n", dev->name);
 		return PTR_ERR(phydev);

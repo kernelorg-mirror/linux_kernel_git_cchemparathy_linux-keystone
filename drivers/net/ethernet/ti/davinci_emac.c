@@ -1448,7 +1448,7 @@ void emac_poll_controller(struct net_device *ndev)
 }
 #endif
 
-static void emac_adjust_link(struct net_device *ndev)
+static void emac_adjust_link(struct net_device *ndev, void *context)
 {
 	struct emac_priv *priv = netdev_priv(ndev);
 	struct phy_device *phydev = priv->phydev;
@@ -1601,7 +1601,7 @@ static int emac_dev_open(struct net_device *ndev)
 	if (priv->phy_id && *priv->phy_id) {
 		priv->phydev = phy_connect(ndev, priv->phy_id,
 					   &emac_adjust_link, 0,
-					   PHY_INTERFACE_MODE_MII);
+					   PHY_INTERFACE_MODE_MII, NULL);
 
 		if (IS_ERR(priv->phydev)) {
 			dev_err(emac_dev, "could not connect to phy %s\n",

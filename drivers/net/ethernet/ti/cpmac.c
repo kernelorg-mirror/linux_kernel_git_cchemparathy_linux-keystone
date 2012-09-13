@@ -920,7 +920,7 @@ static const struct ethtool_ops cpmac_ethtool_ops = {
 	.set_ringparam = cpmac_set_ringparam,
 };
 
-static void cpmac_adjust_link(struct net_device *dev)
+static void cpmac_adjust_link(struct net_device *dev, void *context)
 {
 	struct cpmac_priv *priv = netdev_priv(dev);
 	int new_state = 0;
@@ -1174,7 +1174,7 @@ static int __devinit cpmac_probe(struct platform_device *pdev)
 						mdio_bus_id, phy_id);
 
 	priv->phy = phy_connect(dev, priv->phy_name, cpmac_adjust_link, 0,
-						PHY_INTERFACE_MODE_MII);
+				PHY_INTERFACE_MODE_MII, NULL);
 
 	if (IS_ERR(priv->phy)) {
 		if (netif_msg_drv(priv))

@@ -892,11 +892,12 @@ err_register:
 /**
  * xemaclite_adjust_link - Link state callback for the Emaclite device
  * @ndev: pointer to net_device struct
+ * @context: pointer to context argument
  *
  * There's nothing in the Emaclite device to be configured when the link
  * state changes. We just print the status.
  */
-void xemaclite_adjust_link(struct net_device *ndev)
+void xemaclite_adjust_link(struct net_device *ndev, void *context)
 {
 	struct net_local *lp = netdev_priv(ndev);
 	struct phy_device *phy = lp->phy_dev;
@@ -932,7 +933,7 @@ static int xemaclite_open(struct net_device *dev)
 
 		lp->phy_dev = of_phy_connect(lp->ndev, lp->phy_node,
 					     xemaclite_adjust_link, 0,
-					     PHY_INTERFACE_MODE_MII);
+					     PHY_INTERFACE_MODE_MII, NULL);
 		if (!lp->phy_dev) {
 			dev_err(&lp->ndev->dev, "of_phy_connect() failed\n");
 			return -ENODEV;

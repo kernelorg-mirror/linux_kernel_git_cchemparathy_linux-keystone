@@ -857,7 +857,7 @@ static void __inline__ fec_get_mac(struct net_device *ndev)
 /*
  * Phy section
  */
-static void fec_enet_adjust_link(struct net_device *ndev)
+static void fec_enet_adjust_link(struct net_device *ndev, void *context)
 {
 	struct fec_enet_private *fep = netdev_priv(ndev);
 	struct phy_device *phy_dev = fep->phy_dev;
@@ -995,7 +995,7 @@ static int fec_enet_mii_probe(struct net_device *ndev)
 
 	snprintf(phy_name, sizeof(phy_name), PHY_ID_FMT, mdio_bus_id, phy_id);
 	phy_dev = phy_connect(ndev, phy_name, &fec_enet_adjust_link, 0,
-			      fep->phy_interface);
+			      fep->phy_interface, NULL);
 	if (IS_ERR(phy_dev)) {
 		printk(KERN_ERR "%s: could not attach to PHY\n", ndev->name);
 		return PTR_ERR(phy_dev);

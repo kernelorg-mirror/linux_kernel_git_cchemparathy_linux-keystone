@@ -313,7 +313,7 @@ static int bfin_mdiobus_reset(struct mii_bus *bus)
 	return 0;
 }
 
-static void bfin_mac_adjust_link(struct net_device *dev)
+static void bfin_mac_adjust_link(struct net_device *dev, void *context)
 {
 	struct bfin_mac_local *lp = netdev_priv(dev);
 	struct phy_device *phydev = lp->phydev;
@@ -426,7 +426,7 @@ static int mii_probe(struct net_device *dev, int phy_mode)
 	}
 
 	phydev = phy_connect(dev, dev_name(&phydev->dev), &bfin_mac_adjust_link,
-			0, phy_mode);
+			0, phy_mode, NULL);
 
 	if (IS_ERR(phydev)) {
 		netdev_err(dev, "could not attach PHY\n");

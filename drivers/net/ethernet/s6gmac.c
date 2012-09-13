@@ -739,7 +739,7 @@ static inline void s6gmac_linkisup(struct net_device *dev, int isup)
 	phy_print_status(phydev);
 }
 
-static void s6gmac_adjust_link(struct net_device *dev)
+static void s6gmac_adjust_link(struct net_device *dev, void *context)
 {
 	struct s6gmac *pd = netdev_priv(dev);
 	struct phy_device *phydev = pd->phydev;
@@ -796,7 +796,7 @@ static inline int s6gmac_phy_start(struct net_device *dev)
 	while ((i < PHY_MAX_ADDR) && (!(p = pd->mii.bus->phy_map[i])))
 		i++;
 	p = phy_connect(dev, dev_name(&p->dev), &s6gmac_adjust_link, 0,
-			PHY_INTERFACE_MODE_RGMII);
+			PHY_INTERFACE_MODE_RGMII, NULL);
 	if (IS_ERR(p)) {
 		printk(KERN_ERR "%s: Could not attach to PHY\n", dev->name);
 		return PTR_ERR(p);

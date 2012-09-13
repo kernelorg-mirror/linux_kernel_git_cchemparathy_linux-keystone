@@ -1021,7 +1021,7 @@ static irqreturn_t pasemi_mac_tx_intr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void pasemi_adjust_link(struct net_device *dev)
+static void pasemi_adjust_link(struct net_device *dev, void *context)
 {
 	struct pasemi_mac *mac = netdev_priv(dev);
 	int msg;
@@ -1099,7 +1099,7 @@ static int pasemi_mac_phy_init(struct net_device *dev)
 	mac->duplex = -1;
 
 	phydev = of_phy_connect(dev, phy_dn, &pasemi_adjust_link, 0,
-				PHY_INTERFACE_MODE_SGMII);
+				PHY_INTERFACE_MODE_SGMII, NULL);
 
 	if (IS_ERR(phydev)) {
 		printk(KERN_ERR "%s: Could not attach to phy\n", dev->name);
