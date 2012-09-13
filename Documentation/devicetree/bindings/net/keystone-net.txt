@@ -1,0 +1,43 @@
+This document describes the device tree bindings associated with the
+keystone network driver support.
+
+reg:		the register start address and the size that will be
+		used by the driver. The second index is for the efuse
+		mac address
+tx-channel:	the packet dma channel name associated with tx
+tx-queue-depth: the number of descriptors to be used
+rx-channel:	the packet dma channel name associated with rx
+rx-queue-depth: there can be at present a maximum of 4 queues per packet
+		dma channel. We can specify the number of descriptors for
+		each queue
+rx-buffer-size: For each receive queue, we can specify a buffer size.
+efuse-mac:	If this is 1, then the mac address is obtained from the
+		device efuse mac address register
+local-mac-address:the driver is designed to use the of_get_mac_address api
+		  only if efuse-mac is 0. When efuse-mac is 0, the mac address
+		  is obtained from local-mac-address.
+
+The keystone network device can open other modules such as cpsw or pa.
+
+Below we provide an example.
+
+netcp: netcp@2090000 {
+			reg = <0x2090000 0xf00
+				0x2620110 0x8>;
+			compatible = "ti,keystone-netcp";
+
+			tx-channel = "nettx";
+			tx-queue-depth = <128>;
+
+			rx-channel = "netrx";
+			rx-queue-depth = < 128 128 0 0>;
+			rx-buffer-size = <1500 4096 0 0>;
+
+			efuse-mac = <1>;
+			local-mac-address = [00 18 31 7e 3e 6e];
+
+			pa: pa@2000000 {
+				label = "keystone-pa";
+			};
+		};
+

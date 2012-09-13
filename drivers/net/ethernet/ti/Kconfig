@@ -60,6 +60,16 @@ config TI_CPSW
 	  To compile this driver as a module, choose M here: the module
 	  will be called cpsw.
 
+config TI_KEYSTONE_NET
+	tristate "TI Keystone Ethernet Support"
+	depends on TI_KEYSTONE
+	default y if TI_KEYSTONE
+	---help---
+	  This driver supports TI's Keystone Ethernet.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called keystone_net.
+
 config TLAN
 	tristate "TI ThunderLAN support"
 	depends on (PCI || EISA)
