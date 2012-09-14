@@ -119,5 +119,275 @@
 				};
 			};
 		};
+
+		infradma: pktdma@2a6c000 {
+			compatible = "ti,keystone-pktdma";
+			reg = <0x2a6c000 0x100		/* 0 - global  */
+			       0x2a6c400 0x400		/* 1 - txchan  */
+			       0x2a6c800 0x400		/* 2 - rxchan  */
+			       0x2a6cc00 0x400		/* 3 - txsched */
+			       0x2a6d000 0x400>;	/* 4 - rxflow  */
+			loop-back;
+			/* big-endian; */
+			enable-all;
+			/* debug; */
+			/* rx-priority = <0>; */
+			/* tx-priority = <0>; */
+			channels {
+				udmatx0 {
+					transmit;
+					label		= "udmatx0";
+					pool		= "pool-udma";
+					submit-queue	= <800>;
+					complete-queue  = <0>;
+					/* debug; */
+					channel		= <0>;
+					priority	= <1>;
+					flowtag		= <0>;
+				};
+				udmatx1 {
+					transmit;
+					label		= "udmatx1";
+					pool		= "pool-udma";
+					submit-queue	= <801>;
+					complete-queue  = <1>;
+					/* debug; */
+					channel		= <1>;
+					priority	= <1>;
+					flowtag		= <1>;
+				};
+				udmatx2 {
+					transmit;
+					label		= "udmatx2";
+					pool		= "pool-udma";
+					submit-queue	= <802>;
+					complete-queue  = <2>;
+					/* debug; */
+					channel		= <2>;
+					priority	= <1>;
+					flowtag		= <2>;
+				};
+				udmatx3 {
+					transmit;
+					label		= "udmatx3";
+					pool		= "pool-udma";
+					submit-queue	= <803>;
+					complete-queue  = <3>;
+					/* debug; */
+					channel		= <3>;
+					priority	= <1>;
+					flowtag		= <3>;
+				};
+				udmatx4 {
+					transmit;
+					label		= "udmatx4";
+					pool		= "pool-udma";
+					submit-queue	= <804>;
+					complete-queue  = <4>;
+					/* debug; */
+					channel		= <4>;
+					priority	= <1>;
+					flowtag		= <4>;
+				};
+				udmatx5 {
+					transmit;
+					label		= "udmatx5";
+					pool		= "pool-udma";
+					submit-queue	= <805>;
+					complete-queue  = <5>;
+					/* debug; */
+					channel		= <5>;
+					priority	= <1>;
+					flowtag		= <5>;
+				};
+				udmatx6 {
+					transmit;
+					label		= "udmatx6";
+					pool		= "pool-udma";
+					submit-queue	= <806>;
+					complete-queue  = <6>;
+					/* debug; */
+					channel		= <6>;
+					priority	= <1>;
+					flowtag		= <6>;
+				};
+				udmatx7 {
+					transmit;
+					label		= "udmatx7";
+					pool		= "pool-udma";
+					submit-queue	= <807>;
+					complete-queue  = <7>;
+					/* debug; */
+					channel		= <7>;
+					priority	= <1>;
+					flowtag		= <7>;
+				};
+				udmatx8 {
+					transmit;
+					label		= "udmatx8";
+					pool		= "pool-udma";
+					submit-queue	= <808>;
+					complete-queue  = <8>;
+					/* debug; */
+					channel		= <8>;
+					priority	= <1>;
+					flowtag		= <8>;
+				};
+				udmatx9 {
+					transmit;
+					label		= "udmatx9";
+					pool		= "pool-udma";
+					submit-queue	= <809>;
+					complete-queue  = <9>;
+					/* debug; */
+					channel		= <9>;
+					priority	= <1>;
+					flowtag		= <9>;
+				};
+				udmatx10 {
+					transmit;
+					label		= "udmatx10";
+					pool		= "pool-udma";
+					submit-queue	= <810>;
+					complete-queue  = <10>;
+					/* debug; */
+					channel		= <10>;
+					priority	= <1>;
+					flowtag		= <10>;
+				};
+				udmatx11 {
+					transmit;
+					label		= "udmatx11";
+					pool		= "pool-udma";
+					submit-queue	= <811>;
+					complete-queue  = <11>;
+					/* debug; */
+					channel		= <11>;
+					priority	= <1>;
+					flowtag		= <11>;
+				};
+				udmarx0 {
+					receive;
+					label		= "udmarx0";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <16>;
+					/* debug; */
+					channel		= <0>;
+					flow		= <0>;
+				};
+				udmarx1 {
+					receive;
+					label		= "udmarx1";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <17>;
+					/* debug; */
+					channel		= <1>;
+					flow		= <1>;
+				};
+				udmarx2 {
+					receive;
+					label		= "udmarx2";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <18>;
+					/* debug; */
+					channel		= <2>;
+					flow		= <2>;
+				};
+				udmarx3 {
+					receive;
+					label		= "udmarx3";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <19>;
+					/* debug; */
+					channel		= <3>;
+					flow		= <3>;
+				};
+				udmarx4 {
+					receive;
+					label		= "udmarx4";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <20>;
+					/* debug; */
+					channel		= <4>;
+					flow		= <4>;
+				};
+				udmarx5 {
+					receive;
+					label		= "udmarx5";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <21>;
+					/* debug; */
+					channel		= <5>;
+					flow		= <5>;
+				};
+				udmarx6 {
+					receive;
+					label		= "udmarx6";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <22>;
+					/* debug; */
+					channel		= <6>;
+					flow		= <6>;
+				};
+				udmarx7 {
+					receive;
+					label		= "udmarx7";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <23>;
+					/* debug; */
+					channel		= <7>;
+					flow		= <7>;
+				};
+				udmarx8 {
+					receive;
+					label		= "udmarx8";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <24>;
+					/* debug; */
+					channel		= <8>;
+					flow		= <8>;
+				};
+				udmarx9 {
+					receive;
+					label		= "udmarx9";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <25>;
+					/* debug; */
+					channel		= <9>;
+					flow		= <9>;
+				};
+				udmarx10 {
+					receive;
+					label		= "udmarx10";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <26>;
+					/* debug; */
+					channel		= <10>;
+					flow		= <10>;
+				};
+				udmarx11 {
+					receive;
+					label		= "udmarx11";
+					pool		= "pool-udma";
+					/* submit-queue = <xx>; */
+					complete-queue  = <27>;
+					/* debug; */
+					channel		= <11>;
+					flow		= <11>;
+				};
+			};
+		};
+
 	};
 };
