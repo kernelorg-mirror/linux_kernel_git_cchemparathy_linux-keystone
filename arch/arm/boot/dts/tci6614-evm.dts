@@ -499,5 +499,62 @@
 			compatible = "ti,keystone-udma";
 		};
 
+		netcp: netcp@2090000 {
+			reg = <0x2090000 0xf00
+				0x2620110 0x8>;
+			compatible = "ti,keystone-netcp";
+
+			rx-channel = "netrx";
+			rx-queue-depth = <128 128 0 0>;
+			rx-buffer-size = <1500 4096 0 0>;
+
+			efuse-mac = <1>;
+			local-mac-address = [00 18 31 7e 3e 6e];
+
+			cpsw: cpsw@2090000 {
+				label = "keystone-cpsw";
+
+				tx-channel = "nettx";
+				tx_queue_depth = <32>;
+
+				sgmii_module_ofs  = <0x100>;
+				switch_module_ofs = <0x800>;
+				host_port_reg_ofs = <0x834>;
+				slave_reg_ofs	  = <0x860>;
+				sliver_reg_ofs	  = <0x900>;
+				hw_stats_reg_ofs  = <0xb00>;
+				ale_reg_ofs	  = <0xe00>;
+
+				num_slaves  = <2>;
+				ale_ageout  = <10>;
+				ale_entries = <1024>;
+				ale_ports   = <3>;
+
+				slaves {
+					slave0 {
+						label		= "slave0";
+						link-interface	= <2>;
+					};
+					slave1 {
+						label		= "slave1";
+						link-interface	= <1>;
+					};
+				};
+			};
+			pa: pa@2000000 {
+				label = "keystone-pa";
+
+				tx_cmd_queue_depth	= <32>;
+				tx_data_queue_depth	= <32>;
+				rx_pool_depth		= <32>;
+				rx_buffer_size		= <128>;
+			};
+			sa: pa@20c0000 {
+				label = "keystone-sa";
+
+				tx_queue_depth = <32>;
+			};
+		};
+
 	};
 };
