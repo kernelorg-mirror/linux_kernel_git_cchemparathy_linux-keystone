@@ -572,5 +572,65 @@
 						   note that SRCS0 is bit 4 in ipc register */
 		};
 
+		rproc0: rproc@2620040 {
+			compatible = "ti,keystone-rproc";
+			reg = <0x02620040 4				/* boot address register */
+			       0x02350a5c 4				/* module control register */
+			       0x02350120 4				/* power domain transition command register */
+			       0x02620240 4>;				/* ipc interrupt generation register */
+			addr-map = <0x10800000 0x00800000 0x100000	/* l2-ram  global, local, size */
+				    0x10800000 0x10800000 0x100000	/* l2-ram  global, global, size */
+				    0x0c000000 0x0c000000 0x200000	/* msmc-sram  global, local, size */
+				    0xa0000000 0xa0000000 0x20000000>;	/* ddr3-sram  global, local, size */
+			exception-irq	= <512>;			/* ipc irq for DSP exception */
+			firmware	= "dsp-core0.out";
+			core		= "dsp-core0";
+		};
+
+		rproc1: rproc@2620044 {
+			compatible = "ti,keystone-rproc";
+			reg = <0x02620044 4
+			       0x02350a60 4
+			       0x02350120 4
+			       0x02620244 4>;
+			addr-map = <0x11800000 0x00800000 0x100000
+				    0x11800000 0x11800000 0x100000
+				    0x0c000000 0x0c000000 0x200000
+				    0xa0000000 0xa0000000 0x20000000>;
+			exception-irq	= <513>;
+			firmware	= "dsp-core1.out";
+			core		= "dsp-core1";
+		};
+
+		rproc2: rproc@2620048 {
+			compatible = "ti,keystone-rproc";
+			reg = <0x02620048 4
+			       0x02350a68 4
+			       0x02350120 4
+			       0x02620248 4>;
+			addr-map = <0x12800000 0x00800000 0x100000
+				    0x12800000 0x12800000 0x100000
+				    0x0c000000 0x0c000000 0x200000
+				    0xa0000000 0xa0000000 0x20000000>;
+			exception-irq	= <514>;
+			firmware	= "dsp-core2.out";
+			core		= "dsp-core2";
+		};
+
+		rproc3: rproc@262004C {
+			compatible = "ti,keystone-rproc";
+			reg = <0x0262004c 4
+			       0x02350a70 4
+			       0x02350120 4
+			       0x0262024c 4>;
+			addr-map = <0x13800000 0x00800000 0x100000
+				    0x13800000 0x13800000 0x100000
+				    0x0c000000 0x0c000000 0x200000
+				    0xa0000000 0xa0000000 0x20000000>;
+			exception-irq	= <515>;
+			firmware	= "dsp-core3.out";
+			core		= "dsp-core3";
+		};
+
 	};
 };
