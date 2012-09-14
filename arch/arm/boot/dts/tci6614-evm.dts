@@ -495,5 +495,9 @@
 			bus-freq	= <50000000>;
 		};
 
+		udma0 {
+			compatible = "ti,keystone-udma";
+		};
+
 	};
 };
