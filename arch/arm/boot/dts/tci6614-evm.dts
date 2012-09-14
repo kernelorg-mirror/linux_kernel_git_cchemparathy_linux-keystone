@@ -632,5 +632,24 @@
 			core		= "dsp-core3";
 		};
 
+		rapidio: rapidio@2900000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			reg = <0x2900000 0x21000               /* rio regs */
+                               0x2620000 0x3b0>;               /* boot config regs */
+			compatible = "ti,keystone-rapidio";
+
+			tx_channel = "riotx";
+			tx_queue_depth = <32>;
+
+			rx_channel = "riorx";
+			rx_queue_depth	= <64 0 0 0>;
+			rx_buffer_size	= <1552 0 0 0>;
+
+                        ports = <0x1>;      /* bitfield of port(s) to probe on this controller */
+                        dev-id-size = <0>;  /* RapidIO common transport system size.
+			                     * 0 - Small size. 8-bit deviceID fields. 256 devices.
+                                             * 1 - Large size, 16-bit deviceID fields. 65536 devices. */
+		};
 	};
 };
