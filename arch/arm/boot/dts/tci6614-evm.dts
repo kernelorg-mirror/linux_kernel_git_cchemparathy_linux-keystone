@@ -389,5 +389,77 @@
 			};
 		};
 
+		padma: pktdma@2004000 {
+			compatible = "ti,keystone-pktdma";
+			reg = <0x2004000 0x100		/* 0 - global  */
+			       0x2004400 0x120		/* 1 - txchan  */
+			       0x2004800 0x300		/* 2 - rxchan  */
+			       0x2004c00 0x120		/* 3 - txsched */
+			       0x2005000 0x400>;	/* 4 - rxflow  */
+			/* loop-back;  */
+			/* bigendian; */
+			enable-all;
+			/* debug; */
+			/* rx-priority = <0>; */
+			/* tx-priority = <0>; */
+			channels {
+				nettx {
+					transmit;
+					label		= "nettx";
+					pool		= "pool-net";
+					submit-queue	= <648>;
+					/* complete-queue = <xx>; */
+					/* debug; */
+					/* channel = <0>; */
+					/* priority = <1>; */
+				};
+				netrx {
+					receive;
+					label		= "netrx";
+					pool		= "pool-net";
+					/* submit-queue   = <xx>; */
+					complete-queue = <650>;
+					/* debug; */
+					/* channel = <0>; */
+					flow		= <30>;
+				};
+				satx {
+					transmit;
+					label		= "satx";
+					pool		= "pool-net";
+					submit-queue	= <646>;
+				};
+				patx-cmd {
+					transmit;
+					label		= "patx-cmd";
+					pool		= "pool-net";
+					submit-queue	= <640>;
+					/* complete-queue = <xx>; */
+					/* debug; */
+					/* channel = <xx>; */
+					/* priority = <1>; */
+				};
+				patx-dat {
+					transmit;
+					label		= "patx-dat";
+					pool		= "pool-net";
+					submit-queue	= <645>;
+					/* complete-queue = <xx>; */
+					/* debug; */
+					/* channel = <xx>; */
+					/* priority = <1>; */
+				};
+				parx {
+					receive;
+					label		= "parx";
+					pool		= "pool-net";
+					/* submit-queue   = <xx>; */
+					/* complete-queue = <xx>; */
+					/* debug; */
+					/* channel = <0>; */
+					flow		= <31>;
+				};
+			};
+		};
 	};
 };
