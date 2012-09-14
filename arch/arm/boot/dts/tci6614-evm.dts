@@ -22,5 +22,102 @@
 		compatible = "simple-bus", "ti,tci6614-bus";
 		ranges;
 
+		hwqueue0: hwqueue@2a00000 {
+			compatible = "ti,keystone-hwqueue";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+			reg = <0x2a00000 0x20000	/* 0 - peek	*/
+			       0x2a62000 0x6000		/* 1 - status	*/
+			       0x2a68000 0x2000		/* 2 - config	*/
+			       0x2a6a000 0x4000		/* 3 - region	*/
+			       0x2a20000 0x20000>;	/* 4 - push/pop	*/
+			range		= <0 0x1000>;
+			regions		= <12 3>;
+			linkram0	= <0x80000 0x4000>;
+			link-index	= <0x1400 0x800>;
+			queues {
+				qpend-arm {
+					values = <650 8>;
+					irq-base= <41>;
+					reserved;
+				};
+				general {
+					values = <4000 64>;
+				};
+				pa {
+					values = <640 9>;
+					reserved;
+				};
+				infradma {
+					values = <800 12>;
+					reserved;
+				};
+				accumulator-low-0 {
+					values = <0 32>;
+					// pdsp-id, channel, entries, pacing mode, latency
+					accumulator = <0 32 8 2 0>;
+					irq-base = <363>;
+					multi-queue;
+					reserved;
+				};
+				accumulator-low-1 {
+					values = <32 32>;
+					// pdsp-id, channel, entries, pacing mode, latency
+					accumulator = <0 33 8 2 0>;
+					irq-base = <364>;
+					multi-queue;
+				};
+				accumulator-low-2 {
+					values = <64 32>;
+					// pdsp-id, channel, entries, pacing mode, latency
+					accumulator = <0 34 8 2 0>;
+					irq-base = <365>;
+					multi-queue;
+				};
+				accumulator-low-3 {
+					values = <96 32>;
+					// pdsp-id, channel, entries, pacing mode, latency
+					accumulator = <0 35 8 2 0>;
+					irq-base = <366>;
+					multi-queue;
+				};
+				accumulator-high {
+					values = <728 8>;
+					// pdsp-id, channel, entries, pacing mode, latency
+					accumulator = <0 20 8 2 0>;
+					irq-base = <150>;
+					reserved;
+				};
+				riotx {
+					values = <672 1>;
+					reserved;
+				};
+			};
+			descriptors {
+				pool-net {
+					values = <768 128>;	/* num_desc desc_size */
+				};
+				pool-udma {
+					values = <1152 128>;	/* num_desc desc_size */
+				};
+				pool-rio {
+					values = <128 128>;
+				};
+			};
+			pdsps {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges;
+				pdsp0@0x2a60000 {
+					firmware = "keystone/qmss_pdsp_acc48_le_1_0_3_12.fw";
+					reg = <0x2a60000 0x1000    /*iram */
+					       0x2a6e000 0x1000    /*reg*/
+					       0x2aa0000 0x3c8	   /*intd */
+					       0x2ab8000 0x4000>;  /*cmd*/
+					id = <0>;
+				};
+			};
+		};
 	};
 };
