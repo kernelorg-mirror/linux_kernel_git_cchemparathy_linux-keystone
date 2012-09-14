@@ -461,5 +461,32 @@
 				};
 			};
 		};
+
+		riodma: pktdma@2901000 {
+			compatible = "ti,keystone-pktdma";
+			reg = <0x2901000 0x100		/* 0 - global  */
+			       0x2901400 0x200		/* 1 - txchan  */
+			       0x2901800 0x200		/* 2 - rxchan  */
+			       0x2901c00 0x200		/* 3 - txsched */
+			       0x2902000 0x300>;	/* 4 - rxflow  */
+			enable-all;
+			channels {
+				riotx {
+					transmit;
+					label		= "riotx";
+					pool		= "pool-rio";
+					submit-queue	= <672>;
+					/*complete-queue	= <657>;*/
+					/*debug;*/
+				};
+				riorx {
+					receive;
+					label		= "riorx";
+					pool		= "pool-rio";
+					complete-queue	= <653>;
+					flow		= <21>;
+				};
+			};
+		};
 	};
 };
