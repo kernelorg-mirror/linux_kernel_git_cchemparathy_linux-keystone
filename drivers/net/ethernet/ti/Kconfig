@@ -80,6 +80,13 @@ config TI_KEYSTONE_PA
 	  To compile this driver as a module, choose M here: the module
 	  will be called keystone_pa.
 
+config TI_KEYSTONE_NET_SA
+	tristate "TI Keystone inflow Security Accelerator mode Support"
+	depends on TI_KEYSTONE
+	default y if TI_KEYSTONE
+	---help---
+	  This driver supports TI's Keystone inflow Security Accelerator
+          mode.
 
 config TLAN
 	tristate "TI ThunderLAN support"
