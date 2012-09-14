@@ -27,6 +27,7 @@
 #include <linux/mtd/partitions.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
+#include <linux/of_platform.h>
 
 #include <asm/mach/arch.h>
 #include <asm/mach-types.h>
@@ -179,8 +180,15 @@ static struct tci6614_device_info evm_device_info __initconst = {
 	.spi_config		= &spi_pdata,
 };
 
+static struct of_device_id tci6614_dt_match_table[] __initdata = {
+	{ .compatible = "simple-bus",},
+	{ .compatible = "ti,tci6614-bus",},
+	{}
+};
+
 static __init void tci6614_evm_board_init(void)
 {
+	of_platform_populate(NULL, tci6614_dt_match_table, NULL, NULL);
 
 	tci6614_devices_init(&evm_device_info);
 
@@ -203,9 +211,15 @@ static void __init tci6614_evm_map_io(void)
 	tci6614_init();
 }
 
+static const char* tci6614_dt_board_compat[] = {
+	"ti,tci6614-evm",
+	NULL
+};
+
 MACHINE_START(TCI6614_EVM, "TCI6614 EVM")
 	.map_io		= tci6614_evm_map_io,
 	.init_irq	= tci6614_intc_init,
 	.timer		= &davinci_timer,
 	.init_machine	= tci6614_evm_board_init,
+	.dt_compat	= tci6614_dt_board_compat,
 MACHINE_END
