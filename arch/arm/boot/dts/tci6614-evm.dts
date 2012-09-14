@@ -561,5 +561,16 @@
 			reg = <0x20c0000 0x40000>;
 		};
 
+		ipcirq: ipcirq@26202bc {	/* ipc irq chip */
+			compatible = "ti,keystone-ipc-irq";
+			reg  = <0x026202bc 4	/* host ack register */
+			        0x0262027c 4>;	/* ipc host interrupt generation register */
+			irq  = <129>;		/* it should match the value in irqs.h */
+			base = <512>;		/* base irq number
+						   following is the source id to irq mapping
+						   SRCS0 <-> base ... SRCS27 <-> (base + 27)
+						   note that SRCS0 is bit 4 in ipc register */
+		};
+
 	};
 };
