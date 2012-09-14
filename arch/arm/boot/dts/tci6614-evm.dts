@@ -556,5 +556,10 @@
 			};
 		};
 
+		crypto: crypto@20c0000 {
+			compatible = "ti,keystone-crypto";
+			reg = <0x20c0000 0x40000>;
+		};
+
 	};
 };
