@@ -1,0 +1,26 @@
+/dts-v1/;
+/include/ "skeleton.dtsi"
+
+/ {
+	model = "Texas Instruments TCI6614 EVM";
+	compatible = "ti,tci6614-evm";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8 mem=512M rootwait=1 rw ubi.mtd=2,2048 rootfstype=ubifs root=ubi0:rootfs";
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x80000000 0x8000000>;
+	};
+
+	soc6614@2000000 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus", "ti,tci6614-bus";
+		ranges;
+
+	};
+};
