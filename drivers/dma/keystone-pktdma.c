@@ -50,6 +50,7 @@
 #define DESC_PSFLAGS_SHIFT	16
 #define DESC_RETQ_MASK		BITS(14)
 #define DESC_RETQ_SHIFT		0
+#define DESC_RETQMGR_SHIFT	12
 #define DESC_FLOWTAG_MASK	BITS(8)
 #define DESC_FLOWTAG_SHIFT	16
 #define DESC_LEN_MASK		BITS(22)
@@ -158,6 +159,9 @@ struct keystone_dma_device {
 	struct clk			*clk;
 	bool				 big_endian, loopback, enable_all;
 	unsigned			 tx_priority, rx_priority;
+	unsigned			 logical_queue_managers;
+	unsigned			 queues_per_queue_manager;
+	unsigned			 qm_base_address[4];
 	struct reg_global __iomem	*reg_global;
 	struct reg_chan __iomem		*reg_tx_chan;
 	struct reg_rx_flow __iomem	*reg_rx_flow;
@@ -197,6 +201,7 @@ struct keystone_dma_chan {
 	void				*descs;
 	int				 qnum_submit[KEYSTONE_QUEUES_PER_CHAN];
 	int				 qnum_complete;
+	int				 dest_queue_manager;
 	struct dma_notify_info		 notify_info;
 	wait_queue_head_t		 state_wait_queue;
 
@@ -767,6 +772,7 @@ static void chan_destroy_queues(struct keystone_dma_chan *chan)
 	}
 	chan->q_complete = NULL;
 	chan->qnum_complete = 0;
+	chan->dest_queue_manager = 0;
 
 	for (i = 0; i < KEYSTONE_QUEUES_PER_CHAN; ++i) {
 		if (chan->q_submit[i])
@@ -782,6 +788,7 @@ static void chan_destroy_queues(struct keystone_dma_chan *chan)
 
 static int chan_setup_queues(struct keystone_dma_chan *chan)
 {
+	struct keystone_dma_device *dma = chan->dma;
 	unsigned flags = O_RDWR;
 	struct hwqueue *q;
 	int ret = 0;
@@ -834,6 +841,8 @@ static int chan_setup_queues(struct keystone_dma_chan *chan)
 	}
 	chan->qnum_complete = hwqueue_get_id(q);
 	chan->q_complete = q;
+	chan->dest_queue_manager = chan->qnum_complete /
+					dma->queues_per_queue_manager;
 
 	/* setup queue notifier */
 	ret = hwqueue_set_notifier(q, chan_complete_callback, chan);
@@ -876,7 +885,9 @@ static int chan_start(struct keystone_dma_chan *chan)
 
 	if (chan->reg_rx_flow) {
 		v  = CHAN_HAS_EPIB | CHAN_HAS_PSINFO;
-		v |= chan->qnum_complete | (DESC_TYPE_HOST << DESC_TYPE_SHIFT);
+		v |= chan->qnum_complete |
+			(chan->dest_queue_manager << DESC_RETQMGR_SHIFT) |
+			(DESC_TYPE_HOST << DESC_TYPE_SHIFT);
 		__raw_writel(v, &chan->reg_rx_flow->control);
 
 		__raw_writel(0, &chan->reg_rx_flow->tags);
@@ -1153,6 +1164,10 @@ static void keystone_dma_hw_init(struct keystone_dma_device *dma)
 			__raw_writel(DMA_ENABLE, &dma->reg_tx_chan[i].control);
 		}
 	}
+
+	for (i = 0; i < dma->logical_queue_managers; i++)
+		__raw_writel(dma->qm_base_address[i],
+			     &dma->reg_global->qm_base_address[i]);
 
 }
 
@@ -1523,7 +1538,8 @@ chan_prep_slave_sg(struct dma_chan *achan, struct scatterlist *_sg,
 	packet_info = ((epib ? DESC_HAS_EPIB : 0)	 |
 		       pslen << DESC_PSLEN_SHIFT	 |
 		       psflags << DESC_PSFLAGS_SHIFT |
-		       chan->qnum_complete << DESC_RETQ_SHIFT);
+		       chan->qnum_complete << DESC_RETQ_SHIFT |
+		       chan->dest_queue_manager << DESC_RETQMGR_SHIFT);
 
 	/* Walk backwards through the scatterlist */
 	next_desc = 0;
@@ -1932,6 +1948,8 @@ static int __devinit keystone_dma_probe(struct platform_device *pdev)
 	resource_size_t size;
 	int ret, num_chan = 0;
 	u32 priority;
+	u32 config[4];
+	u32 i;
 
 	if (!node) {
 		dev_err(&pdev->dev, "could not find device info\n");
@@ -2001,6 +2019,30 @@ static int __devinit keystone_dma_probe(struct platform_device *pdev)
 		priority = DMA_PRIO_DEFAULT;
 	}
 	dma->tx_priority = priority;
+
+	ret = of_property_read_u32(node, "logical-queue-managers",
+				   &dma->logical_queue_managers);
+	if (ret < 0) {
+		dev_dbg(&pdev->dev, "unspecified number of logical "
+				"queue managers\n");
+		dma->logical_queue_managers = 2;
+	}
+
+	ret = of_property_read_u32(node, "queues-per-queue-manager",
+				   &dma->queues_per_queue_manager);
+	if (ret < 0) {
+		dev_dbg(&pdev->dev, "unspecified number of queues per "
+				"queue manager\n");
+		dma->queues_per_queue_manager = 4096;
+	}
+
+	ret = of_property_read_u32_array(node, "qm-base-address",
+					 config, dma->logical_queue_managers);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < dma->logical_queue_managers; i++)
+		dma->qm_base_address[i] = config[i];
 
 	dma->max_rx_chan = max_rx_chan;
 	dma->max_rx_flow = max_rx_flow;
