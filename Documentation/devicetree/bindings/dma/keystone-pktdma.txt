@@ -37,48 +37,14 @@ channel:	 the actual channel number to be used.
 priority:	 the priority associated with a channel.
 flow:		 the RX flow that will be used. Applicable only for
                  RX.
+logical-queue-managers: number of logical queue managers
+queues-per-queue-manager: the number of queues per queue manager
+qm-base-address: the actual VBUSM address that needs to be programmed into
+		 each QM_BASE_ADDR register. The number of distinct values
+		 should be equal to the number of logical queue managers.
 
-2 examples are provided below. infradma is the packet dma instance associated
-with the queue manage susbsystem. padma is packet dma instance associated
+An examples is provided below. padma is packet dma instance associated
 with the packet accelerator susbsystem.
-
-infradma: pktdma@2a6c000 {
-			compatible = "ti,keystone-pktdma";
-			reg = <0x2a6c000 0x100		/* 0 - global  */
-			       0x2a6c400 0x400		/* 1 - txchan  */
-			       0x2a6c800 0x400		/* 2 - rxchan  */
-			       0x2a6cc00 0x400		/* 3 - txsched */
-			       0x2a6d000 0x400>;	/* 4 - rxflow  */
-			loop-back;
-			/* big-endian; */
-			/* enable-all; */
-			/* debug; */
-			channels {
-				vethtx {
-					transmit;
-					label		= "vethtx";
-					pool		= "pool-veth";
-					descriptors	= <128>;
-					submit-queue	= <800>;
-					/* complete-queue = <xx>; */
-					/* debug; */
-					channel		= <0>;
-					priority	= <1>;
-					flowtag		= <1>;
-				};
-				vethrx {
-					receive;
-					label		= "vethrx";
-					pool		= "pool-veth";
-					descriptors	= <128>;
-					/* submit-queue   = <xx>; */
-					/* complete-queue = <xx>; */
-					/* debug; */
-					channel		= <0>;
-					flow		= <0>;
-				};
-			};
-		};
 
 		padma: pktdma@2004000 {
 			compatible = "ti,keystone-pktdma";
@@ -91,6 +57,11 @@ infradma: pktdma@2a6c000 {
 			/* bigendian; */
 			enable-all;
 			/* debug; */
+
+			logical-queue-managers	= <2>;
+			queues-per-queue-manager = <4096>;
+			qm-base-address = <0x34020000 0x34030000>;
+
 			channels {
 				nettx {
 					transmit;
