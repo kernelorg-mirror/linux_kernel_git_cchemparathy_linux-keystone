@@ -32,7 +32,7 @@
 			       0x2a68000 0x2000		/* 2 - config	*/
 			       0x2a6a000 0x4000		/* 3 - region	*/
 			       0x2a20000 0x20000>;	/* 4 - push/pop	*/
-			range		= <0 0x1000>;
+			range		= <0 0x2000>;
 			regions		= <12 3>;
 			linkram0	= <0x80000 0x4000>;
 			link-index	= <0x1400 0x800>;
@@ -133,6 +133,10 @@
 			/* debug; */
 			/* rx-priority = <0>; */
 			/* tx-priority = <0>; */
+			logical-queue-managers	= <2>;
+			queues-per-queue-manager = <4096>;
+			qm-base-address = <0x34020000 0x34030000>;
+
 			channels {
 				udmatx0 {
 					transmit;
@@ -402,6 +406,10 @@
 			/* debug; */
 			/* rx-priority = <0>; */
 			/* tx-priority = <0>; */
+			logical-queue-managers	= <2>;
+			queues-per-queue-manager = <4096>;
+			qm-base-address = <0x34020000 0x34030000>;
+
 			channels {
 				nettx {
 					transmit;
@@ -470,6 +478,11 @@
 			       0x2901c00 0x200		/* 3 - txsched */
 			       0x2902000 0x300>;	/* 4 - rxflow  */
 			enable-all;
+
+			logical-queue-managers	= <2>;
+			queues-per-queue-manager = <4096>;
+			qm-base-address = <0x34020000 0x34030000>;
+
 			channels {
 				riotx {
 					transmit;
