@@ -27,15 +27,27 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
-			reg = <0x2a00000 0x20000	/* 0 - peek	*/
-			       0x2a62000 0x6000		/* 1 - status	*/
-			       0x2a68000 0x2000		/* 2 - config	*/
-			       0x2a6a000 0x4000		/* 3 - region	*/
-			       0x2a20000 0x20000>;	/* 4 - push/pop	*/
+			reg		= <0x2a00000 0xc0000>;
 			range		= <0 0x2000>;
 			regions		= <12 3>;
 			linkram0	= <0x80000 0x4000>;
 			link-index	= <0x1400 0x800>;
+
+			qmgrs {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges;
+				qmgr0 {
+					managed-queues = <0 0x2000>;	/* managed queues */
+					reg = <0x2a00000 0x20000	/* 0 - peek	*/
+					       0x2a62000 0x6000		/* 1 - status	*/
+					       0x2a68000 0x2000		/* 2 - config	*/
+					       0x2a6a000 0x4000		/* 3 - region	*/
+					       0x2a20000 0x20000	/* 4 - push	*/
+					       0x2a20000 0x20000>;	/* 5 - pop	*/
+				};
+			};
+
 			queues {
 				qpend-arm {
 					values = <650 8>;
@@ -97,12 +109,15 @@
 			descriptors {
 				pool-net {
 					values = <768 128>;	/* num_desc desc_size */
+					address = <0>;
 				};
 				pool-udma {
 					values = <1152 128>;	/* num_desc desc_size */
+					address = <0>;
 				};
 				pool-rio {
 					values = <128 128>;
+					address = <0>;
 				};
 			};
 			pdsps {
