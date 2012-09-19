@@ -209,7 +209,7 @@ static const char* tci6614_dt_board_compat[] = {
 	NULL
 };
 
-MACHINE_START(TCI6614_EVM, "TCI6614 EVM")
+DT_MACHINE_START(TCI6614_EVM, "TCI6614 EVM")
 	.map_io		= tci6614_evm_map_io,
 	.init_irq	= tci6614_intc_init,
 	.timer		= &davinci_timer,
