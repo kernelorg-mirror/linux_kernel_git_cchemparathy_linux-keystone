@@ -65,9 +65,6 @@ static inline void set_uart_info(u32 phys)
 #define DEBUG_LL_TNETV107X(machine, port)			\
 	_DEBUG_LL_ENTRY(machine, TNETV107X_UART##port##_BASE)
 
-#define DEBUG_LL_TCI6614(machine, port)				\
-	_DEBUG_LL_ENTRY(machine, TCI6614_UART##port##_BASE)
-
 static inline void __arch_decomp_setup(unsigned long arch_id)
 {
 	/*
@@ -94,10 +91,6 @@ static inline void __arch_decomp_setup(unsigned long arch_id)
 
 		/* TNETV107x boards */
 		DEBUG_LL_TNETV107X(tnetv107x,		1);
-
-		/* TCI6614 boards */
-		DEBUG_LL_TCI6614(tci6614_sim,		0);
-		DEBUG_LL_TCI6614(tci6614_evm,		0);
 	} while (0);
 }
 
