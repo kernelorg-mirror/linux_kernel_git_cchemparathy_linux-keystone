@@ -328,6 +328,14 @@ static struct davinci_id ids[] = {
 		.cpu_id		= DAVINCI_CPU_ID_TCI6614,
 		.name		= "tci6614 rev 1.0",
 	},
+	{
+		/* For PG 1.3 */
+		.variant	= 0x1,
+		.part_no	= 0xb962,
+		.manufacturer	= 0x017,
+		.cpu_id		= DAVINCI_CPU_ID_TCI6614,
+		.name		= "tci6614 rev 1.3",
+	},
 };
 
 static struct davinci_timer_instance timer_instance[2] = {
