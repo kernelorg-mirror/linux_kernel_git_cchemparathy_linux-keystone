@@ -18,6 +18,7 @@
 #include <linux/init.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
+#include <linux/dma-mapping.h>
 
 #include <asm/setup.h>
 #include <asm/mach/map.h>
@@ -63,9 +64,39 @@ static struct sys_timer keystone_timer = {
 	.init = keystone_timer_init,
 };
 
+static bool is_coherent(struct device *dev)
+{
+	struct device_node *node = of_node_get(dev->of_node);
+
+	while (node) {
+		if (of_property_read_bool(node, "dma-coherent")) {
+			of_node_put(node);
+			return true;
+		}
+		node = of_get_next_parent(node);
+	}
+	return false;
+}
+
+static int keystone_platform_notifier(struct notifier_block *nb,
+				      unsigned long event, void *dev)
+{
+	if (event != BUS_NOTIFY_ADD_DEVICE)
+		return NOTIFY_DONE;
+
+	if (is_coherent(dev))
+		set_dma_ops(dev, &arm_coherent_dma_ops);
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block keystone_platform_nb = {
+	.notifier_call = keystone_platform_notifier,
+};
 
 static void __init keystone_init(void)
 {
+	bus_register_notifier(&platform_bus_type, &keystone_platform_nb);
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 }
 
