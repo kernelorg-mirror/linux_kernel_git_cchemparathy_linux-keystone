@@ -236,6 +236,10 @@ static struct clk clk_mdio = {
 	.parent		= &clk_ethss,
 };
 
+static struct clk clk_mdio_fck = {
+	.parent		= &clk_mdio,
+};
+
 static struct clk clk_pa = {
 	.parent		= &clk_pktproc,
 };
@@ -276,6 +280,7 @@ static struct clk_lookup clks[] = {
 	CLK("2090000.netcp",	"clk_cpgmac",		&clk_cpgmac),
 	CLK("20c0000.crypto",	NULL,			&clk_crypto),
 	CLK("2090300.mdio",	NULL,			&clk_mdio),
+	CLK("2090300.mdio",	"fck",			&clk_mdio_fck),
 	CLK(NULL,		"clk_pciex",		&clk_pciex),
 	CLK(NULL,		"clk_srio",		&clk_srio),
 	CLK(NULL,		"clk_bcp",		&clk_bcp),
