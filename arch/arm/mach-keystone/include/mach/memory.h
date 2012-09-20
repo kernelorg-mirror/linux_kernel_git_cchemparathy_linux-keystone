@@ -40,6 +40,17 @@ static inline phys_addr_t __virt_to_idmap(unsigned long x)
 
 #define virt_to_idmap(x)	__virt_to_idmap((unsigned long)(x))
 
+extern unsigned long __arch_dma_pfn_offset;
+
+#define __arch_pfn_to_dma(dev, pfn)				\
+	PFN_PHYS(pfn - __arch_dma_pfn_offset)
+#define __arch_dma_to_pfn(dev, addr)				\
+	(PFN_DOWN(addr) + __arch_dma_pfn_offset)
+#define __arch_dma_to_virt(dev, addr)				\
+	phys_to_virt(addr + PFN_PHYS(__arch_dma_pfn_offset))
+#define __arch_virt_to_dma(dev, addr)				\
+	(virt_to_phys(addr) - PFN_PHYS(__arch_dma_pfn_offset))
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* CONFIG_ARM_LPAE */
