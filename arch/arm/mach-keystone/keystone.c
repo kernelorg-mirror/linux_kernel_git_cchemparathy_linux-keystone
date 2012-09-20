@@ -74,6 +74,8 @@ static const char *keystone_match[] __initconst = {
 	NULL,
 };
 
+unsigned long __arch_dma_pfn_offset;
+
 static void __init keystone_init_meminfo(void)
 {
 	bool lpae = IS_ENABLED(CONFIG_ARM_LPAE);
@@ -107,6 +109,9 @@ static void __init keystone_init_meminfo(void)
 	pr_info("switching to high address space at 0x%llx\n", offset);
 	__pv_phys_offset = offset;
 	__pv_offset      = offset - PAGE_OFFSET;
+
+	__arch_dma_pfn_offset = PFN_DOWN(KEYSTONE_HIGH_PHYS_START -
+					 KEYSTONE_LOW_PHYS_START);
 }
 
 DT_MACHINE_START(KEYSTONE, "Keystone")
