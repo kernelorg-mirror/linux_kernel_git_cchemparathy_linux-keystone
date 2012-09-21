@@ -1,0 +1,330 @@
+#!/bin/bash
+
+branches()
+{
+	stem="$1"
+	git branch -al | sed 's:^..::g' |
+		if [ -n "$stem" ]
+		then
+			grep "^$stem/" | sed "s:^$stem/::g"
+		else
+			cat
+		fi
+}
+
+error()
+{
+	echo "!!!" $* >&2
+}
+
+debug()
+{
+	echo "===" $* > /dev/null
+}
+
+command()
+{
+	echo $* >&2
+	$*
+}
+
+sanitize()
+{
+	str=$1; shift;
+	echo $str |
+	sed $* -e 's/\/\+/\//g' -e 's/\/\+$//g' -e 's/^\/\+//g'
+}
+
+get_remote()
+{
+	if echo $1 | grep ':' > /dev/null
+	then
+		sanitize $1 -e 's/:.*$//g'
+	fi
+}
+
+get_forest()
+{
+	if echo $1 | grep ':' > /dev/null
+	then
+		f=`echo $1 | sed 's/^.*://g'`
+		[ "$f" == "-" ] || sanitize $f
+	else
+		sanitize $1
+	fi
+}
+
+get_stem()
+{
+	remote=`get_remote $1`
+	forest=`get_forest $1`
+	if [ -z "$remote" ]
+	then
+		sanitize $forest
+	else
+		sanitize /remotes/$remote/$forest
+	fi
+}
+
+forest_rm_usage()
+{
+	cat >&2 << EOF
+
+forest_rm: remove a forest
+Usage: forest_rm [-h] [-f] [<remote>:]<forest> ...
+Options:
+	-h		this help message
+	-f		force remove, delete unmerged branches
+	<remote>	delete forest on remote instead of local
+	<forest>	forest to remove, '-' for root forest
+EOF
+}
+
+forest_rm()
+{
+	debug rm $*
+	unset OPTIND
+	opt_force=-d
+	while getopts ":hf" opt; do
+		case "${opt}" in
+			h)
+				forest_rm_usage
+				exit 0
+				;;
+			f)	opt_force="-D"
+				;;
+			*)
+				error "unrecognized option ${OPTARG}"
+				forest_rm_usage
+				exit 1
+				;;
+		esac
+	done
+
+	shift $((OPTIND-1))
+
+	for forest in $*
+	do
+		remote=`get_remote $forest`
+		stem=`get_stem $forest`
+		rstem=`get_forest $forest`
+		branches=`branches $stem`
+		if [ -z "$remote" ]
+		then
+			for branch in $branches
+			do
+				command git branch $opt_force $stem/$branch
+			done
+		else
+			if [ "$opt_force" == "-d" ]
+			then
+				error must force removal of remote branches
+				exit 1
+			fi
+			for branch in $branches
+			do
+				command git push $remote :refs/heads/$rstem/$branch
+			done
+		fi
+	done
+}
+
+forest_ls_usage()
+{
+	cat >&2 << EOF
+
+forest_ls: list branches in a forest
+Usage: forest_ls [-h] [-l] [<remote>:]<forest> ...
+Options:
+	-h		this help message
+	<remote>	remote to find forest in
+	<forest>	forest to list
+EOF
+}
+
+forest_ls()
+{
+	debug ls $*
+	unset OPTIND
+	opt_long=
+	while getopts ":h" opt; do
+		case "${opt}" in
+			h)
+				forest_ls_usage
+				exit 0
+				;;
+			*)
+				error "unrecognized option ${OPTARG}"
+				forest_ls_usage
+				exit 1
+				;;
+		esac
+	done
+
+	shift $((OPTIND-1))
+
+	for forest in $*
+	do
+		stem=`get_stem $forest`
+		branches=`branches $stem`
+		for branch in $branches
+		do
+			echo $stem/$branch
+		done
+	done
+}
+
+forest_cp_usage()
+{
+	cat >&2 << EOF
+
+forest_cp: copy a forest
+Usage: forest_cp [-h] [-m] [<remote>:]<from> [<remote>:]<to>
+Options:
+	-h		this help message
+	-m		move instead of copy
+	-f		force copy/move, remove <to> forest first
+	-k		keep <to> branches
+	<remote>	optional remote to copy/move to/from
+	<from>		forest to copy from
+	<to>		forest to copy to
+EOF
+}
+
+forest_cp()
+{
+	debug cp $*
+	unset OPTIND
+	move=""
+	force=""
+	keep=""
+	while getopts ":hmfk" opt; do
+		case "${opt}" in
+			h)
+				forest_cp_usage
+				exit 0
+				;;
+			m)	move="-m"
+				;;
+			k)	keep="y"
+				;;
+			f)	force="-f"
+				;;
+			*)
+				error "unrecognized option ${OPTARG}"
+				forest_cp_usage
+				exit 1
+				;;
+		esac
+	done
+
+	shift $((OPTIND-1))
+	opt_from=$1; shift;
+	opt_to=$1; shift;
+
+	if [ -z "$opt_to" ] || [ -z "$opt_from" ]
+	then
+		error "must specify from and to forests"
+		forest_cp_usage
+		exit 1
+	fi
+
+	to_branches=`forest_ls $opt_to`
+	if [ ! -z "$to_branches" ] && [ -z "$keep" ]
+	then
+		if [ -z "$force" ]
+		then
+			error must force to remove existing tree at $opt_to
+			forest_cp_usage
+			exit 1
+		else
+			forest_rm $force $opt_to
+		fi
+	fi
+
+	tremote=`get_remote $opt_to`
+	tstem=`get_forest $opt_to`
+	fstem=`get_stem $opt_from`
+
+	branches=`branches $fstem`
+	for branch in $branches
+	do
+		f=`sanitize $fstem/$branch`
+		t=`sanitize $tstem/$branch`
+		if [ -z "$tremote" ]
+		then
+			command git branch $t $f
+		else
+			command git push $force $tremote $f:refs/heads/$t
+		fi
+	done
+
+	[ -z "$move" ] || forest_rm $force $opt_from
+}
+
+forest_mv()
+{
+	debug mv $*
+	unset OPTIND
+	forest_cp -m $*
+}
+
+forest_rebuild_usage()
+{
+	cat >&2 << EOF
+
+forest_rebuild: recreate master from origin and rebuild branches
+Usage: forest_rebuild [-h] <forest>
+Options:
+	-h		this help message
+	<forest>	local forest to operate on
+EOF
+}
+
+forest_rebuild()
+{
+	debug rebuild $*
+	unset OPTIND
+	while getopts ":hmf" opt; do
+		case "${opt}" in
+			h)
+				forest_rebuild_usage
+				exit 0
+				;;
+			*)
+				error "unrecognized option ${OPTARG}"
+				forest_rebuild_usage
+				exit 1
+				;;
+		esac
+	done
+
+	shift $((OPTIND-1))
+	forest=$1; shift;
+
+	if [ -z "$forest" ]
+	then
+		error "must specify forest to rebuild"
+		forest_rebuild_usage
+		exit 1
+	fi
+
+	rebuild=`branches $forest | grep '^rebuild/' | sort`
+	git checkout $forest/master
+	git reset --hard $forest/origin
+	for branch in $rebuild
+	do
+		command git merge $forest/$branch
+	done
+	command git rebase $forest/origin
+}
+
+forest()
+{
+	debug forest $*
+	unset OPTIND
+	cmd=$1; shift;
+	forest_$cmd $*
+}
+
+`basename $0` $*
