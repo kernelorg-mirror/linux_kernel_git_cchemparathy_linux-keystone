@@ -444,6 +444,16 @@ static inline void free_area(unsigned long pfn, unsigned long end, char *s)
 		printk(KERN_INFO "Freeing %s memory: %dK\n", s, size);
 }
 
+static inline void free_area_phys(phys_addr_t start, phys_addr_t end, char *s)
+{
+	free_area(__phys_to_pfn(start), __phys_to_pfn(end), s);
+}
+
+static inline void free_area_virt(void *start, void *end, char *s)
+{
+	free_area_phys(__pa(start), __pa(end), s);
+}
+
 /*
  * Poison init memory with an undefined instruction (ARM) or a branch to an
  * undefined instruction (Thumb).
@@ -737,16 +747,12 @@ void free_initmem(void)
 	extern char __tcm_start, __tcm_end;
 
 	poison_init_mem(&__tcm_start, &__tcm_end - &__tcm_start);
-	free_area(__phys_to_pfn(__pa(&__tcm_start)),
-				    __phys_to_pfn(__pa(&__tcm_end)),
-				    "TCM link");
+	free_area_virt(&__tcm_start, &__tcm_end, "TCM link");
 #endif
 
 	poison_init_mem(__init_begin, __init_end - __init_begin);
 	if (!machine_is_integrator() && !machine_is_cintegrator())
-		free_area(__phys_to_pfn(__pa(__init_begin)),
-					    __phys_to_pfn(__pa(__init_end)),
-					    "init");
+		free_area_virt(__init_begin, __init_end, "init");
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
@@ -757,9 +763,7 @@ void free_initrd_mem(unsigned long start, unsigned long end)
 {
 	if (!keep_initrd) {
 		poison_init_mem((void *)start, PAGE_ALIGN(end) - start);
-		free_area(__phys_to_pfn(__pa(start)),
-					    __phys_to_pfn(__pa(end)),
-					    "initrd");
+		free_area_virt((void *)start, (void *)end, "initrd");
 	}
 }
 
