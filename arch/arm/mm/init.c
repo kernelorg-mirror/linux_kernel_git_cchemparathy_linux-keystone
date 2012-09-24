@@ -150,58 +150,6 @@ static void __init find_limits(unsigned long *min, unsigned long *max_low,
 	*max_high = bank_pfn_end(&mi->bank[mi->nr_banks - 1]);
 }
 
-static void __init arm_bootmem_init(unsigned long start_pfn,
-	unsigned long end_pfn)
-{
-	struct memblock_region *reg;
-	unsigned int boot_pages;
-	phys_addr_t bitmap;
-	pg_data_t *pgdat;
-
-	/*
-	 * Allocate the bootmem bitmap page.  This must be in a region
-	 * of memory which has already been mapped.
-	 */
-	boot_pages = bootmem_bootmap_pages(end_pfn - start_pfn);
-	bitmap = memblock_alloc_base(boot_pages << PAGE_SHIFT, L1_CACHE_BYTES,
-				__pfn_to_phys(end_pfn));
-
-	/*
-	 * Initialise the bootmem allocator, handing the
-	 * memory banks over to bootmem.
-	 */
-	node_set_online(0);
-	pgdat = NODE_DATA(0);
-	init_bootmem_node(pgdat, __phys_to_pfn(bitmap), start_pfn, end_pfn);
-
-	/* Free the lowmem regions from memblock into bootmem. */
-	for_each_memblock(memory, reg) {
-		unsigned long start = memblock_region_memory_base_pfn(reg);
-		unsigned long end = memblock_region_memory_end_pfn(reg);
-
-		if (end >= end_pfn)
-			end = end_pfn;
-		if (start >= end)
-			break;
-
-		free_bootmem(__pfn_to_phys(start), (end - start) << PAGE_SHIFT);
-	}
-
-	/* Reserve the lowmem memblock reserved regions in bootmem. */
-	for_each_memblock(reserved, reg) {
-		unsigned long start = memblock_region_reserved_base_pfn(reg);
-		unsigned long end = memblock_region_reserved_end_pfn(reg);
-
-		if (end >= end_pfn)
-			end = end_pfn;
-		if (start >= end)
-			break;
-
-		reserve_bootmem(__pfn_to_phys(start),
-			        (end - start) << PAGE_SHIFT, BOOTMEM_DEFAULT);
-	}
-}
-
 #ifdef CONFIG_ZONE_DMA
 
 unsigned long arm_dma_zone_size __read_mostly;
@@ -393,8 +341,6 @@ void __init bootmem_init(void)
 
 	find_limits(&min, &max_low, &max_high);
 
-	arm_bootmem_init(min, max_low);
-
 	/*
 	 * Sparsemem tries to allocate bootmem in memory_present(),
 	 * so must be done after the fixed reservations
@@ -546,16 +492,16 @@ static void __init free_unused_memmap(struct meminfo *mi)
 #endif
 }
 
-static void __init free_highpages(void)
+static void __init free_memory(void)
 {
-#ifdef CONFIG_HIGHMEM
-	unsigned long max_low = max_low_pfn + PHYS_PFN_OFFSET;
 	struct memblock_region *mem, *res;
 
-	/* set highmem page free */
 	for_each_memblock(memory, mem) {
 		unsigned long start = memblock_region_memory_base_pfn(mem);
 		unsigned long end = memblock_region_memory_end_pfn(mem);
+
+#ifndef CONFIG_HIGHMEM
+		unsigned long max_low = max_low_pfn + PHYS_PFN_OFFSET;
 
 		/* Ignore complete lowmem entries */
 		if (end <= max_low)
@@ -564,6 +510,7 @@ static void __init free_highpages(void)
 		/* Truncate partial highmem entries */
 		if (start < max_low)
 			start = max_low;
+#endif
 
 		/* Find and exclude any reserved regions */
 		for_each_memblock(reserved, res) {
@@ -591,7 +538,6 @@ static void __init free_highpages(void)
 		if (start < end)
 			free_area(start, end, NULL);
 	}
-#endif
 }
 
 /*
@@ -615,14 +561,12 @@ void __init mem_init(void)
 	/* this will put all unused low memory onto the freelists */
 	free_unused_memmap(&meminfo);
 
-	totalram_pages += free_all_bootmem();
-
 #ifdef CONFIG_SA1111
 	/* now that our DMA memory is actually so designated, we can free it */
 	free_area(PHYS_PFN_OFFSET, __phys_to_pfn(__pa(swapper_pg_dir)), NULL);
 #endif
 
-	free_highpages();
+	free_memory();
 
 	reserved_pages = free_pages = 0;
 
